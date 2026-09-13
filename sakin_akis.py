@@ -817,12 +817,23 @@ const TOPIC_SYNONYMS = {{
   "ekonomi": ["dolar","euro","enflasyon","borsa","faiz","tcmb","merkez bankası","ihracat","ithalat","economy","market"],
   "siyaset": ["chp","akp","mhp","iyi parti","meclis","bakan","cumhurbaşkanı","seçim","parti","politics"],
   "magazin": ["ünlü","oyuncu","şarkıcı","dizi","influencer","boşandı","evlendi","celebrity"],
-  "teknoloji": ["yapay zeka","yazılım","uygulama","telefon","apple","google","microsoft","tech","ai"]
+  "teknoloji": ["yapay zeka","yazılım","uygulama","telefon","apple","google","microsoft","tech","ai"],
+  "guncelleme": ["patch","update","yama","sürüm","hotfix","düzeltme","bug fix","balance"],
+  "turnuva": ["tournament","championship","şampiyona","esports","e-spor","major","worlds","playoffs","lig","turnuva"],
+  "yeniicerik": ["dlc","yeni harita","yeni ajan","yeni şampiyon","yeni karakter","genişleme","expansion","yeni mod","new content","reveal","yeni silah","yeni sezon","season"],
+  "indirim": ["sale","discount","indirim","kampanya","fırsat","ücretsiz","free weekend"]
 }};
 
 const TOPIC_LABELS = {{
-  tr: {{futbol:"Futbol", spor:"Spor", ekonomi:"Ekonomi", siyaset:"Siyaset", magazin:"Magazin", teknoloji:"Teknoloji"}},
-  en: {{futbol:"Football", spor:"Sports", ekonomi:"Economy", siyaset:"Politics", magazin:"Celebrity", teknoloji:"Tech"}}
+  tr: {{futbol:"Futbol", spor:"Spor", ekonomi:"Ekonomi", siyaset:"Siyaset", magazin:"Magazin", teknoloji:"Teknoloji",
+        guncelleme:"Güncelleme", turnuva:"Turnuva", yeniicerik:"Yeni İçerik", indirim:"İndirim"}},
+  en: {{futbol:"Football", spor:"Sports", ekonomi:"Economy", siyaset:"Politics", magazin:"Celebrity", teknoloji:"Tech",
+        guncelleme:"Update", turnuva:"Tournament", yeniicerik:"New Content", indirim:"Sale"}}
+}};
+
+const TOPIC_KEYS_BY_TAB = {{
+  haber: ["futbol","spor","ekonomi","siyaset","magazin","teknoloji"],
+  oyun: ["guncelleme","turnuva","yeniicerik","indirim"]
 }};
 
 function getWordsArray(inputEl){{
@@ -843,7 +854,8 @@ function buildTopicChips(containerId, inputEl, storageKey){{
   const el = document.getElementById(containerId);
   el.innerHTML = '';
   const activeWords = getWordsArray(inputEl).map(w => w.toLocaleLowerCase('tr'));
-  Object.keys(TOPIC_SYNONYMS).forEach(topic => {{
+  const keys = TOPIC_KEYS_BY_TAB[currentTab] || Object.keys(TOPIC_SYNONYMS);
+  keys.forEach(topic => {{
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'topic-chip' + (activeWords.includes(topic) ? ' active' : '');
