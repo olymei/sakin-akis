@@ -55,6 +55,16 @@ SOURCES = [
      "rss": "https://news.google.com/rss/search?q=minecraft+update+when:7d&hl=en-US&gl=US&ceid=US:en"},
     {"id": "tft", "name": "TFT", "color": "#C89B3C", "category": "oyun",
      "rss": "https://news.google.com/rss/search?q=%22Teamfight+Tactics%22+patch+when:7d&hl=en-US&gl=US&ceid=US:en"},
+    {"id": "valorant", "name": "Valorant", "color": "#B8384A", "category": "oyun",
+     "rss": "https://news.google.com/rss/search?q=Valorant+patch+when:7d&hl=en-US&gl=US&ceid=US:en"},
+    {"id": "lol", "name": "League of Legends", "color": "#0F3E6B", "category": "oyun",
+     "rss": "https://news.google.com/rss/search?q=%22League+of+Legends%22+patch+when:7d&hl=en-US&gl=US&ceid=US:en"},
+    {"id": "r6siege", "name": "Rainbow Six Siege", "color": "#3C4A3E", "category": "oyun",
+     "rss": "https://store.steampowered.com/feeds/news/app/359550/?cc=us&l=english"},
+    {"id": "cs2", "name": "Counter-Strike 2", "color": "#8C7A4B", "category": "oyun",
+     "rss": "https://store.steampowered.com/feeds/news/app/730/?cc=us&l=english"},
+    {"id": "dota2", "name": "Dota 2", "color": "#7A2E2E", "category": "oyun",
+     "rss": "https://store.steampowered.com/feeds/news/app/570/?cc=us&l=english"},
     {"id": "game_news", "name": "Buyuk Oyun Haberleri", "color": "#1B3A57", "category": "oyun",
      "rss": "https://news.google.com/rss/search?q=(trailer+OR+announcement+OR+reveal)+game+when:3d&hl=en-US&gl=US&ceid=US:en"},
 ]
@@ -757,7 +767,17 @@ function buildTabs(){{
 }}
 
 function buildSourceToggles(){{
+  const wrapEl = document.getElementById('sourcesLabel');
   const el = document.getElementById('sourceToggles');
+  // Oyunlar sekmesinde tek tek kaynak secimi yok -- hepsi dogrudan gosterilir
+  if (currentTab === 'oyun'){{
+    wrapEl.style.display = 'none';
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }}
+  wrapEl.style.display = '';
+  el.style.display = '';
   el.innerHTML = '';
   SOURCES_META.filter(s => s.category === currentTab).forEach(s => {{
     const btn = document.createElement('button');
@@ -886,7 +906,7 @@ function render(){{
   const importantWords = expandWords(importantRaw);
   let filtered = DATA.filter(it =>
     it.category === currentTab &&
-    activeSources.has(it.sourceId) &&
+    (currentTab === 'oyun' || activeSources.has(it.sourceId)) &&
     matchesFilter(it.title, hideWords, onlyWords)
   );
 
