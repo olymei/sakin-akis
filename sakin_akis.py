@@ -1,0 +1,1141 @@
+#!/usr/bin/env python3
+"""
+Sakin Akis - algoritmasiz, kronolojik haber okuyucu.
+
+Bu script bilgisayarindan dogrudan RSS kaynaklarina baglanir
+(tarayici sandbox'i degil, senin gercek internet baglantin),
+haberleri zaman sirasina gore bir HTML sayfasinda toplar ve
+otomatik olarak tarayicida acar.
+
+Kullanim:
+    python sakin_akis.py
+
+Sadece Python'un kendi kutuphaneleri kullanilir, ek kurulum (pip) gerekmez.
+"""
+
+import urllib.request
+import urllib.parse
+import ssl
+import re
+import json
+import base64
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
+from datetime import datetime, timezone
+import webbrowser
+import os
+import sys
+
+SOURCES = [
+    {"id": "reuters", "name": "Reuters", "color": "#A6432D", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:reuters.com+when:3d&hl=en-US&gl=US&ceid=US:en"},
+    {"id": "ap", "name": "AP", "color": "#3A5A78", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:apnews.com+when:3d&hl=en-US&gl=US&ceid=US:en"},
+    {"id": "bbc_en", "name": "BBC (EN)", "color": "#7A1F2B", "category": "haber",
+     "rss": "http://feeds.bbci.co.uk/news/world/rss.xml"},
+    {"id": "bbc_tr", "name": "BBC Turkce", "color": "#7A1F2B", "category": "haber",
+     "rss": "https://feeds.bbci.co.uk/turkce/rss.xml"},
+    {"id": "cumhuriyet", "name": "Cumhuriyet", "color": "#4B4633", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:cumhuriyet.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
+    {"id": "bianet", "name": "Bianet", "color": "#2F6B5E", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:bianet.org+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
+    {"id": "trt_haber", "name": "TRT Haber", "color": "#8B1E1E", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:trthaber.com+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
+    {"id": "aa", "name": "Anadolu Ajansı", "color": "#2E4A6B", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:aa.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
+    {"id": "sozcu", "name": "Sözcü", "color": "#C97A1F", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:sozcu.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
+    {"id": "deadlock", "name": "Deadlock", "color": "#6B2E5F", "category": "oyun",
+     "rss": "https://store.steampowered.com/feeds/news/app/1422450/?cc=us&l=english"},
+    {"id": "bodycam", "name": "Bodycam", "color": "#4B5320", "category": "oyun",
+     "rss": "https://store.steampowered.com/feeds/news/app/2406770/?cc=us&l=english"},
+    {"id": "zomboid", "name": "Project Zomboid", "color": "#5C7A29", "category": "oyun",
+     "rss": "https://store.steampowered.com/feeds/news/app/108600/?cc=us&l=english"},
+    {"id": "minecraft", "name": "Minecraft", "color": "#4E8B3B", "category": "oyun",
+     "rss": "https://news.google.com/rss/search?q=minecraft+update+when:7d&hl=en-US&gl=US&ceid=US:en"},
+    {"id": "tft", "name": "TFT", "color": "#C89B3C", "category": "oyun",
+     "rss": "https://news.google.com/rss/search?q=%22Teamfight+Tactics%22+patch+when:7d&hl=en-US&gl=US&ceid=US:en"},
+    {"id": "game_news", "name": "Buyuk Oyun Haberleri", "color": "#1B3A57", "category": "oyun",
+     "rss": "https://news.google.com/rss/search?q=(trailer+OR+announcement+OR+reveal)+game+when:3d&hl=en-US&gl=US&ceid=US:en"},
+]
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+}
+
+
+def fetch_feed(url):
+    ctx = ssl.create_default_context()
+    req = urllib.request.Request(url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
+        return resp.read()
+
+
+def parse_date(text):
+    if not text:
+        return None
+    try:
+        dt = parsedate_to_datetime(text)
+    except Exception:
+        try:
+            dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except Exception:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+IMG_TAG_RE = None  # set below after import
+
+
+def find_image_in_html(text):
+    if not text:
+        return None
+    m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', text)
+    return m.group(1) if m else None
+
+
+def make_placeholder_image(source_name, color):
+    """RSS'te gorsel gelmeyen (cogunlukla Google News uzerinden gelen) haberler
+    icin aninda, network'e gitmeden bir monogram gorseli uretir: kaynagin
+    rengiyle boyali bir kare + adin ilk harfi. Yavas/guvenilmez sayfa
+    kazima yontemine (her makaleyi tek tek acmaya calismak) alternatif."""
+    letter = (source_name.strip()[0].upper() if source_name.strip() else "?")
+    letter = letter.replace("&", "&amp;").replace("<", "&lt;")
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 92 92">'
+        f'<rect width="92" height="92" fill="{color}"/>'
+        f'<text x="46" y="50" font-family="Georgia, serif" font-size="38" '
+        f'font-weight="600" fill="#E7E3D8" text-anchor="middle" '
+        f'dominant-baseline="middle">{letter}</text>'
+        f'</svg>'
+    )
+    b64 = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{b64}"
+
+
+STOPWORDS_TR = {
+    "icin", "ile", "oldu", "olan", "yeni", "diye", "gibi", "kadar", "sonra", "once",
+    "daha", "cok", "yer", "aldi", "etti", "yapti", "dedi", "ancak", "fakat", "ama",
+    "veya", "iken", "uzere", "var", "bir", "bu", "su", "da", "de", "ki", "mi", "mu",
+    "ne", "nin", "nun", "tan", "ten", "dan", "den", "the", "and", "for", "with",
+    "from", "that", "this", "have", "has", "was", "were", "been", "will", "says",
+    "said", "after", "before", "over", "into", "about", "their", "they", "what",
+    "when", "update", "guncelleme", "guncellendi", "haber", "haberi", "haberler",
+    "basligi", "baslik", "manset", "aciklamasi", "aciklama",
+}
+
+
+def normalize_title_words(title):
+    text = re.sub(r"[^\w\s]", " ", title.lower(), flags=re.UNICODE)
+    return {w for w in text.split() if len(w) >= 3 and w not in STOPWORDS_TR}
+
+
+def title_word_similarity(wordsA, wordsB):
+    if not wordsA or not wordsB:
+        return 0.0
+    common = len(wordsA & wordsB)
+    return common / min(len(wordsA), len(wordsB))
+
+
+def parse_items(xml_bytes, src):
+    items = []
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError:
+        return items
+
+    ns = {
+        "atom": "http://www.w3.org/2005/Atom",
+        "media": "http://search.yahoo.com/mrss/",
+        "content": "http://purl.org/rss/1.0/modules/content/",
+    }
+    nodes = root.findall(".//item")
+    is_atom = False
+    if not nodes:
+        nodes = root.findall(".//atom:entry", ns)
+        is_atom = True
+
+    for node in nodes:
+        title_el = node.find("title")
+        title = (title_el.text or "").strip() if title_el is not None else ""
+
+        if is_atom:
+            link_el = node.find("atom:link", ns)
+            link = link_el.get("href") if link_el is not None else ""
+            date_el = node.find("atom:published", ns)
+            if date_el is None:
+                date_el = node.find("atom:updated", ns)
+            date_text = date_el.text if date_el is not None else ""
+        else:
+            link_el = node.find("link")
+            link = (link_el.text or "").strip() if link_el is not None else ""
+            date_el = node.find("pubDate")
+            date_text = date_el.text if date_el is not None else ""
+
+        dt = parse_date(date_text)
+
+        # gorsel arama sirasi: enclosure -> media:content -> media:thumbnail -> aciklama icindeki <img>
+        image = None
+        enclosure = node.find("enclosure")
+        if enclosure is not None:
+            enc_type = enclosure.get("type", "")
+            if "image" in enc_type or not enc_type:
+                image = enclosure.get("url")
+
+        if not image:
+            media_content = node.find("media:content", ns)
+            if media_content is not None and media_content.get("url"):
+                image = media_content.get("url")
+
+        if not image:
+            media_thumb = node.find("media:thumbnail", ns)
+            if media_thumb is not None and media_thumb.get("url"):
+                image = media_thumb.get("url")
+
+        if not image:
+            desc_el = node.find("description")
+            if desc_el is not None:
+                image = find_image_in_html(desc_el.text)
+
+        if not image:
+            content_el = node.find("content:encoded", ns)
+            if content_el is not None:
+                image = find_image_in_html(content_el.text)
+
+        if title and link and dt:
+            items.append({
+                "title": title,
+                "link": link,
+                "date": dt,
+                "source": src["name"],
+                "sourceId": src["id"],
+                "category": src["category"],
+                "color": src["color"],
+                "image": image,
+            })
+
+    # Ayni kaynagin feed'i icinde ayni haberin farkli versiyonlarini (ornegin
+    # "Haber X" ve "GUNCELLEME: Haber X" gibi kucuk baslik degisiklikleriyle)
+    # birden fazla kez listelemesi mumkun -- ozellikle Google News uzerinden
+    # gelenlerde sikca goruluyor. Tam metin eslesmesi bunu yakalayamadigi icin
+    # kelime bazli bulanik benzerlige geciyoruz. Kumeleme mantigi ayni kaynaktan
+    # gelenleri kasten birlestirmez (farkli kaynaklarin ayni olayi yazmasini
+    # kumelemek icindir), o yuzden bu temizlik burada, kaynagin kendi listesi
+    # icinde erkenden yapilmali.
+    deduped = []
+    word_sets = []
+    for it in items:
+        it_words = normalize_title_words(it["title"])
+        is_dup = False
+        for idx, prev in enumerate(deduped):
+            if abs((it["date"] - prev["date"]).total_seconds()) > 48 * 3600:
+                continue
+            common = len(it_words & word_sets[idx])
+            if common >= 2 and title_word_similarity(it_words, word_sets[idx]) >= 0.6:
+                is_dup = True
+                break
+        if not is_dup:
+            deduped.append(it)
+            word_sets.append(it_words)
+    return deduped
+
+
+def extract_proper_nouns(title):
+    """Basliktaki BUYUK HARFLE baslayan kelimeleri (muhtemelen kisi/yer/kurum
+    adlari) cikarir. Ilk kelimeyi de dahil ediyoruz -- Turkce haber basliklari
+    siklikla dogrudan ozel isimle baslar ("Yavas kabul edildi..." gibi).
+    Cumle basinda tesadufen buyuk harfle baslayan sozcuklerin (ozel isim
+    olmayan) yanlis pozitif yaratma riski, ad sikligi esigiyle (bkz.
+    COMMON_NAME_THRESHOLD) zaten sinirlaniyor. JS tarafindaki
+    extractProperNouns ile ayni mantik (kumeleme sonucu tutarli olsun diye)."""
+    raw_words = title.split()
+    proper = set()
+    for w in raw_words:
+        stem = re.split(r"['’]", w)[0]
+        stem = re.sub(r"[^\w]", "", stem, flags=re.UNICODE)
+        if len(stem) < 3:
+            continue
+        if stem[0].isupper():
+            proper.add(stem.lower())
+    return proper
+
+
+def build_name_frequency(proper_sets):
+    freq = {}
+    for s in proper_sets:
+        for w in s:
+            freq[w] = freq.get(w, 0) + 1
+    return freq
+
+
+COMMON_NAME_THRESHOLD = 4
+
+
+def is_similar_title_for_summary(words_a, words_b, proper_a, proper_b, name_freq):
+    if not words_a or not words_b:
+        return False
+    common = words_a & words_b
+    if len(common) >= 2 and len(common) / min(len(words_a), len(words_b)) >= 0.3:
+        return True
+    if not proper_a or not proper_b:
+        return False
+    shared = proper_a & proper_b
+    if len(shared) >= 2:
+        return True
+    if len(shared) == 1:
+        name = next(iter(shared))
+        return name_freq.get(name, 0) <= COMMON_NAME_THRESHOLD
+    return False
+
+
+def cluster_items_for_summary(items):
+    """JS tarafindaki clusterItems ile ayni mantigin Python portu -- AI'a
+    hangi haberlerin ayni olay oldugunu (dolayisiyla tek ozet gerektigini)
+    soylemek icin, build zamaninda (sunucu/Action tarafinda) calisir."""
+    items_sorted = sorted(items, key=lambda x: x["date"], reverse=True)
+    word_sets = [normalize_title_words(it["title"]) for it in items_sorted]
+    proper_sets = [extract_proper_nouns(it["title"]) for it in items_sorted]
+    name_freq = build_name_frequency(proper_sets)
+    n = len(items_sorted)
+    assigned = [False] * n
+    clusters = []
+    for i in range(n):
+        if assigned[i]:
+            continue
+        cluster = [items_sorted[i]]
+        assigned[i] = True
+        dt_i = items_sorted[i]["date"]
+        for j in range(i + 1, n):
+            if assigned[j] or items_sorted[j]["sourceId"] == items_sorted[i]["sourceId"]:
+                continue
+            dt_j = items_sorted[j]["date"]
+            if abs((dt_i - dt_j).total_seconds()) > 36 * 3600:
+                continue
+            if is_similar_title_for_summary(
+                word_sets[i], word_sets[j], proper_sets[i], proper_sets[j], name_freq
+            ):
+                cluster.append(items_sorted[j])
+                assigned[j] = True
+        clusters.append(cluster)
+    return clusters
+
+
+def summarize_clusters_with_ai(title_groups, api_key):
+    """Birden fazla kaynaktan gelen ayni haberin basliklarini tek bir
+    tarafsiz cumleye indirger. Tum gruplari TEK bir API cagrisinda toplu
+    gonderir (maliyet/hiz icin). Basarisiz olursa None doner, caller
+    en kisa baslik yontemine geri duser."""
+    if not api_key or not title_groups:
+        return None
+
+    prompt_lines = []
+    for idx, titles in enumerate(title_groups, 1):
+        prompt_lines.append(f"{idx}. " + " | ".join(titles))
+
+    user_content = (
+        "Asagida, ayni haber olayini farkli kaynaklarin nasil yazdigini "
+        "gosteren numarali gruplar var. Her grup icin, o olayi TARAFSIZ ve "
+        "SADE bir dille anlatan, TEK CUMLELIK, en fazla 18 kelimelik bir "
+        "ozet cumle yaz. Yorum katma, dramatize etme, taraf tutma; sadece "
+        "olgusal bilgiyi ver. Sonucu SADECE bir JSON dizisi (array) olarak "
+        "dondur -- aciklama, markdown, kod blogu YOK. Dizideki her eleman "
+        "sirasiyla bir gruba karsilik gelen ozet cumle olsun.\n\n"
+        + "\n".join(prompt_lines)
+    )
+
+    body = json.dumps({
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 3000,
+        "messages": [{"role": "user", "content": user_content}],
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        },
+        method="POST",
+    )
+    try:
+        ctx = ssl.create_default_context()
+        with urllib.request.urlopen(req, timeout=45, context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        text = "".join(
+            block.get("text", "") for block in data.get("content", [])
+            if block.get("type") == "text"
+        ).strip()
+        text = re.sub(r"^```(json)?\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
+        summaries = json.loads(text)
+        if isinstance(summaries, list) and len(summaries) == len(title_groups):
+            return [str(s).strip() for s in summaries]
+        print(f"  [AI ozet uyarisi] beklenmeyen format, baslik yontemine donuluyor")
+    except Exception as e:
+        print(f"  [AI ozet hatasi] {e}")
+    return None
+
+
+def date_label(dt, now):
+    if dt.date() == now.date():
+        return "bugun"
+    if (now.date() - dt.date()).days == 1:
+        return "dun"
+    aylar = ["Ocak","Subat","Mart","Nisan","Mayis","Haziran",
+             "Temmuz","Agustos","Eylul","Ekim","Kasim","Aralik"]
+    return f"{dt.day} {aylar[dt.month-1]}"
+
+
+def build_html(all_items):
+    now = datetime.now(timezone.utc)
+    all_items.sort(key=lambda x: x["date"], reverse=True)
+
+    favicon_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+        '<rect width="32" height="32" fill="#E7E3D8"/>'
+        '<rect x="6" y="8" width="20" height="3" fill="#22252A"/>'
+        '<rect x="6" y="14.5" width="14" height="3" fill="#22252A"/>'
+        '<rect x="6" y="21" width="9" height="3" fill="#22252A"/>'
+        '<circle cx="25" cy="22.5" r="2.6" fill="#A6432D"/>'
+        '</svg>'
+    )
+    favicon_b64 = base64.b64encode(favicon_svg.encode("utf-8")).decode("ascii")
+    data = [{
+        "title": it["title"],
+        "link": it["link"],
+        "date": it["date"].isoformat(),
+        "source": it["source"],
+        "sourceId": it["sourceId"],
+        "category": it["category"],
+        "color": it["color"],
+        "image": it.get("image") or make_placeholder_image(it["source"], it["color"]),
+        "aiSummary": it.get("ai_summary"),
+    } for it in all_items]
+
+    sources_meta = [{"id": s["id"], "name": s["name"], "color": s["color"], "category": s["category"]} for s in SOURCES]
+
+    generated = now.strftime("%d.%m.%Y %H:%M UTC")
+
+    return f"""<!DOCTYPE html>
+<html lang="tr"><head><meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,{favicon_b64}">
+<title>Sakin Akis</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{{--paper:#E7E3D8;--ink:#22252A;--ink-soft:#5B5D57;--rule:#C9C3B2;--accent:#A6432D;}}
+*{{box-sizing:border-box}} body{{margin:0;background:var(--paper);color:var(--ink);
+font-family:'Source Serif 4',Georgia,serif;position:relative}}
+.wrap{{max-width:640px;margin:0 auto;padding:32px 20px 80px}}
+h1{{font-size:28px;font-weight:700;margin:0 0 4px;letter-spacing:-0.01em}}
+.sub{{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-soft);margin:0}}
+header{{border-bottom:1px solid var(--rule);padding-bottom:18px;margin-bottom:6px;position:relative}}
+.lang-toggle{{position:fixed;top:18px;right:18px;font-family:'IBM Plex Mono',monospace;
+font-size:12px;background:var(--paper);border:1px solid var(--ink);color:var(--ink);
+padding:6px 12px;cursor:pointer;z-index:10}}
+.lang-toggle:hover{{background:var(--ink);color:var(--paper)}}
+.tabs{{display:flex;gap:0;margin:20px 0 4px;border-bottom:1px solid var(--rule)}}
+.tab-btn{{font-family:'IBM Plex Mono',monospace;font-size:13px;background:none;border:none;
+color:var(--ink-soft);padding:8px 4px;margin-right:22px;cursor:pointer;
+border-bottom:2px solid transparent;position:relative;top:1px}}
+.tab-btn.active{{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}}
+.filters{{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 8px}}
+.filter-field{{flex:1;min-width:200px}}
+.filter-field label{{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+color:var(--ink-soft);margin-bottom:4px}}
+.filter-field input{{width:100%;font-family:'IBM Plex Mono',monospace;font-size:12.5px;
+color:var(--ink);background:var(--paper-raised,#DFDACC);border:1px solid var(--rule);
+padding:8px 10px}}
+.filter-field input:focus{{outline:none;border-color:var(--ink)}}
+.topic-chips{{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}}
+.topic-chip{{font-family:'IBM Plex Mono',monospace;font-size:11px;background:none;
+border:1px solid var(--rule);color:var(--ink-soft);padding:3px 9px;cursor:pointer}}
+.topic-chip:hover{{border-color:var(--ink)}}
+.topic-chip.active{{background:var(--ink);color:var(--paper);border-color:var(--ink)}}
+.sort-toggle{{display:inline-block;margin:4px 0 18px;font-family:'IBM Plex Mono',monospace;
+font-size:12px;background:none;border:1px solid var(--ink);color:var(--ink);
+padding:7px 14px;cursor:pointer}}
+.sort-toggle:hover{{background:var(--ink);color:var(--paper)}}
+.sort-toggle.active{{background:var(--accent);color:var(--paper);border-color:var(--accent)}}
+.coverage-badge{{color:var(--accent);font-weight:600}}
+.cluster-sources{{margin-top:12px;padding-left:12px;border-left:2px solid var(--rule)}}
+.cluster-source-row{{display:flex;align-items:baseline;gap:8px;font-family:'IBM Plex Mono',monospace;
+font-size:12px;color:var(--ink-soft);padding:6px 0;border-bottom:1px solid var(--rule)}}
+.cluster-source-row:last-child{{border-bottom:none}}
+.cluster-source-name{{flex-shrink:0;min-width:70px;color:var(--ink-soft)}}
+.cluster-source-row .swatch{{flex-shrink:0;position:relative;top:1px}}
+.cluster-source-row a{{color:var(--ink-soft);text-decoration:none;font-family:'Source Serif 4',Georgia,serif;
+font-size:13.5px;line-height:1.4}}
+.cluster-source-row a:hover{{color:var(--accent)}}
+.pagination{{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+gap:10px 12px;margin:36px 0 10px;font-family:'IBM Plex Mono',monospace;font-size:12px}}
+.page-btn{{background:none;border:1px solid var(--ink);color:var(--ink);
+padding:7px 12px;cursor:pointer}}
+.page-btn:hover:not(:disabled){{background:var(--ink);color:var(--paper)}}
+.page-btn:disabled{{opacity:0.3;cursor:default;border-color:var(--rule);color:var(--ink-soft)}}
+.page-indicator{{color:var(--ink-soft)}}
+.filter-status{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);
+margin:4px 0 6px}}
+.filter-hint{{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-soft);
+margin:0 0 18px;font-style:italic}}
+.sources-label{{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-soft);
+margin:18px 0 8px}}
+.sources{{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:6px}}
+.src-toggle{{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;
+font-size:12.5px;cursor:pointer;user-select:none;padding:3px 0;
+border-bottom:1px solid transparent;color:var(--ink-soft);background:none;border-top:none;
+border-left:none;border-right:none}}
+.src-toggle.active{{color:var(--ink);border-bottom-color:var(--ink)}}
+.src-toggle .swatch{{width:9px;height:9px;flex-shrink:0}}
+.date-divider{{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);
+margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}}
+.item{{padding:16px 0;border-bottom:1px solid var(--rule);
+display:flex;align-items:flex-start;gap:14px;justify-content:space-between}}
+.item-body{{flex:1;min-width:0}}
+.item-meta{{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;
+font-size:11px;color:var(--ink-soft);margin-bottom:6px}}
+.swatch{{width:9px;height:9px;flex-shrink:0}}
+.item h2{{font-size:18px;line-height:1.35;font-weight:600;margin:0}}
+.item a{{color:var(--ink);text-decoration:none}} .item a:hover{{color:var(--accent)}}
+.item.seen{{opacity:0.5}}
+.eye-btn{{background:none;border:none;padding:0;margin:0;cursor:pointer;
+color:var(--ink-soft);display:inline-flex;align-items:center;line-height:0}}
+.eye-btn:hover{{color:var(--accent)}}
+.eye-btn svg{{width:14px;height:14px}}
+.thumb{{width:92px;height:92px;object-fit:cover;flex-shrink:0;background:var(--rule)}}
+.empty{{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);
+padding:40px 0;text-align:center}}
+footer{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);
+margin-top:40px;padding-top:16px;border-top:1px solid var(--rule)}}
+</style></head><body>
+<button class="lang-toggle" id="langToggle">EN</button>
+<div class="wrap">
+<header><h1 id="pageTitle">Sakin Akis</h1><p class="sub" id="pageSub">algoritma yok &middot; reklam yok &middot; kronolojik sira</p></header>
+<div class="tabs" id="mainTabs"></div>
+<div class="sources-label" id="sourcesLabel">kaynaklar</div>
+<div class="sources" id="sourceToggles"></div>
+<div class="filters">
+  <div class="filter-field">
+    <label id="hideLabel" for="hideInput">gizle (virgulle ayir)</label>
+    <input type="text" id="hideInput" placeholder="orn: transfer, magazin">
+    <div class="topic-chips" id="hideTopicChips"></div>
+  </div>
+  <div class="filter-field">
+    <label id="onlyLabel" for="onlyInput">sadece goster (virgulle ayir)</label>
+    <input type="text" id="onlyInput" placeholder="orn: ekonomi, teknoloji">
+    <div class="topic-chips" id="onlyTopicChips"></div>
+  </div>
+  <div class="filter-field">
+    <label id="importantLabel" for="importantInput">onemli (virgulle ayir)</label>
+    <input type="text" id="importantInput" placeholder="orn: deprem, secim, savas">
+    <div class="topic-chips" id="importantTopicChips"></div>
+  </div>
+</div>
+<button class="sort-toggle" id="sortToggle"></button>
+<div class="filter-status" id="filterStatus"></div>
+<div class="filter-hint" id="filterHint"></div>
+<div id="feed"></div>
+<div class="pagination" id="pagination"></div>
+<footer id="pageFooter"></footer>
+</div>
+<script>
+const DATA = {json.dumps(data, ensure_ascii=False)};
+const SOURCES_META = {json.dumps(sources_meta, ensure_ascii=False)};
+const GENERATED = "{generated}";
+
+const STOPWORDS = new Set([
+  'icin','ile','oldu','olan','yeni','diye','gibi','kadar','sonra','once','daha','cok',
+  'yer','aldi','etti','yapti','dedi','ancak','fakat','ama','veya','iken','uzere','var',
+  'bir','bu','su','o','da','de','ki','mi','mu','ne','nin','nun','tan','ten','dan','den',
+  'the','and','for','with','from','that','this','have','has','was','were','been','will',
+  'says','said','after','before','over','into','about','their','they','what','when',
+  'haber','haberi','haberler','basligi','baslik','manset','aciklamasi','aciklama'
+]);
+
+function normalizeTitle(title){{
+  return title.toLocaleLowerCase('tr')
+    .replace(/[^\\p{{L}}\\p{{N}}\\s]/gu, ' ')
+    .split(/\\s+/)
+    .filter(w => w.length >= 3 && !STOPWORDS.has(w));
+}}
+
+function extractProperNouns(title){{
+  // Basliktaki BUYUK HARFLE baslayan kelimeleri (muhtemelen kisi/yer/kurum
+  // adlari) cikarir. Ilk kelimeyi de dahil ediyoruz -- Turkce haber basliklari
+  // siklikla dogrudan ozel isimle baslar ("Yavas kabul edildi..." gibi).
+  // Cumle basinda tesadufen buyuk harfle baslayan sozcuklerin (ozel isim
+  // olmayan) yanlis pozitif yaratma riski, ad sikligi esigiyle (COMMON_NAME_THRESHOLD)
+  // zaten sinirlaniyor. Kesme isaretinden sonraki ek ("Yavas'a" -> "a") atilir,
+  // boylece "Yavas'a" ile "Yavas'i" ayni kok olarak eslesir.
+  const rawWords = title.split(/\\s+/);
+  const proper = new Set();
+  rawWords.forEach(w => {{
+    const stem = w.split(/['’]/)[0].replace(/[^\\p{{L}}\\p{{N}}]/gu, '');
+    if (stem.length < 3) return;
+    const first = stem[0];
+    if (first === first.toLocaleUpperCase('tr') && first !== first.toLocaleLowerCase('tr')){{
+      proper.add(stem.toLocaleLowerCase('tr'));
+    }}
+  }});
+  return proper;
+}}
+
+function hasSharedItem(setA, setB){{
+  for (const w of setA){{ if (setB.has(w)) return true; }}
+  return false;
+}}
+
+function sharedItemCount(setA, setB){{
+  let n = 0;
+  setA.forEach(w => {{ if (setB.has(w)) n++; }});
+  return n;
+}}
+
+// Bir ozel ismin bu haber grubunda kac FARKLI haberde gectigini sayar.
+// "Trump" gibi cok sık geçen bir isim onlarca alakasiz haberde birden
+// gorulur; tek basina kumelemeye yetmemeli. "Yavas" gibi nadir gecen bir
+// isimse muhtemelen o an tek bir olayla ilgilidir, tek basina yeterlidir.
+const COMMON_NAME_THRESHOLD = 4;
+
+function buildNameFrequency(properSets){{
+  const freq = new Map();
+  properSets.forEach(set => {{
+    set.forEach(w => freq.set(w, (freq.get(w) || 0) + 1));
+  }});
+  return freq;
+}}
+
+function isSimilarTitle(wordsA, wordsB, properA, properB, nameFreq){{
+  if (wordsA.size === 0 || wordsB.size === 0) return false;
+  let common = 0;
+  wordsA.forEach(w => {{ if (wordsB.has(w)) common++; }});
+  // iki veya daha fazla ortak anlamli kelime yeterli -- ama basliklardan biri
+  // cok daha uzunsa (ornegin 15 kelimelik bir basligin sadece 2 kelimesi
+  // digeriyle ortak), bu tesadufi olabilir; oranin da makul olmasini isteriz
+  const ratio = common / Math.min(wordsA.size, wordsB.size);
+  if (common >= 2 && ratio >= 0.3) return true;
+
+  if (properA.size === 0 || properB.size === 0) return false;
+  const sharedProperCount = sharedItemCount(properA, properB);
+  // iki veya daha fazla ortak ozel isim (kisi+yer/kurum gibi) guclu bir sinyal --
+  // "Trump" + "Cin" ikisi birden baska bir "Trump" + "Irlanda" haberiyle eslesmez
+  if (sharedProperCount >= 2) return true;
+  if (sharedProperCount === 1){{
+    let sharedName = null;
+    properA.forEach(w => {{ if (properB.has(w)) sharedName = w; }});
+    // tek ortak isim varsa, sadece bu isim o an nadir geciyorsa (yaygin/
+    // populer bir figur degilse) yeterli sayiyoruz
+    return (nameFreq.get(sharedName) || 0) <= COMMON_NAME_THRESHOLD;
+  }}
+  return false;
+}}
+
+function clusterItems(items){{
+  // items onceden tarihe gore azalan sirali gelmeli; her kumenin ilk (en yeni)
+  // ogesi "primary" olur, benzer basliktaki digerleri altina toplanir.
+  const wordSets = items.map(it => new Set(normalizeTitle(it.title)));
+  const properSets = items.map(it => extractProperNouns(it.title));
+  const nameFreq = buildNameFrequency(properSets);
+  const assigned = new Array(items.length).fill(false);
+  const clusters = [];
+  for (let i = 0; i < items.length; i++){{
+    if (assigned[i]) continue;
+    const cluster = [items[i]];
+    assigned[i] = true;
+    const dtI = new Date(items[i].date).getTime();
+    for (let j = i + 1; j < items.length; j++){{
+      if (assigned[j] || items[j].sourceId === items[i].sourceId) continue;
+      const dtJ = new Date(items[j].date).getTime();
+      if (Math.abs(dtI - dtJ) > 36 * 3600 * 1000) continue;
+      if (isSimilarTitle(wordSets[i], wordSets[j], properSets[i], properSets[j], nameFreq)){{
+        cluster.push(items[j]);
+        assigned[j] = true;
+      }}
+    }}
+    clusters.push(cluster);
+  }}
+  return clusters;
+}}
+
+const I18N = {{
+  tr: {{
+    title: "Sakin Akis",
+    sub: "algoritma yok \\u00b7 reklam yok \\u00b7 kronolojik sira",
+    today: "bugun", yesterday: "dun",
+    months: ["Ocak","Subat","Mart","Nisan","Mayis","Haziran","Temmuz","Agustos","Eylul","Ekim","Kasim","Aralik"],
+    relMin: "dk", relHour: "sa", relDay: "g",
+    empty: "Hic haber cekilemedi.",
+    footer: t => `Olusturulma: ${{t}} \\u00b7 yenilemek icin scripti tekrar calistir`,
+    toggleLabel: "EN",
+    hideLabel: "gizle (virgulle ayir)",
+    onlyLabel: "sadece goster (virgulle ayir)",
+    hidePlaceholder: "orn: transfer, magazin",
+    onlyPlaceholder: "orn: ekonomi, teknoloji",
+    filterStatus: (shown, total) => `${{shown}} / ${{total}} haber gosteriliyor`,
+    readFull: "kaynakta ac",
+    sourcesLabel: "kaynaklar",
+    expandedHint: words => `genisletilmis eslesme: ${{words.join(', ')}} de dahil`,
+    importantLabel: "onemli (virgulle ayir)",
+    importantPlaceholder: "orn: deprem, secim, savas",
+    sortToChrono: "kronolojik goster",
+    sortToImportance: "onem sirasina gor",
+    coverageBadge: n => `${{n}} kaynakta`,
+    tabNews: "Haberler",
+    tabGames: "Oyunlar",
+    markSeen: "gordum olarak isaretle",
+    markUnseen: "tekrar yukari cikar",
+    prevPage: "Onceki",
+    nextPage: "Sonraki",
+    firstPage: "Basa Don",
+    lastPage: "Sona Git",
+    pageIndicator: (cur, total) => `Sayfa ${{cur}} / ${{total}}`
+  }},
+  en: {{
+    title: "Calm Feed",
+    sub: "no algorithm \\u00b7 no ads \\u00b7 chronological order",
+    today: "today", yesterday: "yesterday",
+    months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
+    relMin: "m", relHour: "h", relDay: "d",
+    empty: "No articles could be fetched.",
+    footer: t => `Generated: ${{t}} \\u00b7 rerun the script to refresh`,
+    toggleLabel: "TR",
+    hideLabel: "hide (comma-separated)",
+    onlyLabel: "only show (comma-separated)",
+    hidePlaceholder: "e.g. transfer, celebrity",
+    onlyPlaceholder: "e.g. economy, tech",
+    filterStatus: (shown, total) => `showing ${{shown}} / ${{total}} articles`,
+    readFull: "open source",
+    sourcesLabel: "sources",
+    expandedHint: words => `expanded match includes: ${{words.join(', ')}}`,
+    importantLabel: "important (comma-separated)",
+    importantPlaceholder: "e.g. earthquake, election, war",
+    sortToChrono: "show chronological",
+    sortToImportance: "sort by importance",
+    coverageBadge: n => `in ${{n}} sources`,
+    tabNews: "News",
+    tabGames: "Games",
+    markSeen: "mark as seen",
+    markUnseen: "move back to top",
+    prevPage: "Previous",
+    nextPage: "Next",
+    firstPage: "First",
+    lastPage: "Last",
+    pageIndicator: (cur, total) => `Page ${{cur}} of ${{total}}`
+  }}
+}};
+
+let lang = "tr";
+let activeSources = new Set(SOURCES_META.map(s => s.id));
+let sortMode = "chrono";
+let currentTab = "haber";
+let seenLinks = new Set();
+let currentPage = 1;
+const PAGE_SIZE = 25;
+
+const EYE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+const EYE_OFF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.66 18.66 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+function buildTabs(){{
+  const L = I18N[lang];
+  const el = document.getElementById('mainTabs');
+  el.innerHTML = '';
+  [['haber', L.tabNews], ['oyun', L.tabGames]].forEach(([id, label]) => {{
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (currentTab === id ? ' active' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => {{
+      currentTab = id;
+      currentPage = 1;
+      try {{ localStorage.setItem('sakinakis_tab', currentTab); }} catch(e) {{}}
+      render();
+    }});
+    el.appendChild(btn);
+  }});
+}}
+
+function buildSourceToggles(){{
+  const el = document.getElementById('sourceToggles');
+  el.innerHTML = '';
+  SOURCES_META.filter(s => s.category === currentTab).forEach(s => {{
+    const btn = document.createElement('button');
+    btn.className = 'src-toggle' + (activeSources.has(s.id) ? ' active' : '');
+    btn.innerHTML = `<span class="swatch" style="background:${{s.color}}"></span><span>${{s.name}}</span>`;
+    btn.addEventListener('click', () => {{
+      if (activeSources.has(s.id)) activeSources.delete(s.id);
+      else activeSources.add(s.id);
+      currentPage = 1;
+      try {{ localStorage.setItem('sakinakis_sources', JSON.stringify([...activeSources])); }} catch(e) {{}}
+      render();
+    }});
+    el.appendChild(btn);
+  }});
+}}
+
+function dateLabel(dt, now, L){{
+  const sameDay = dt.toDateString() === now.toDateString();
+  if (sameDay) return L.today;
+  const y = new Date(now); y.setDate(now.getDate()-1);
+  if (dt.toDateString() === y.toDateString()) return L.yesterday;
+  return `${{dt.getDate()}} ${{L.months[dt.getMonth()]}}`;
+}}
+
+function relTime(dt, now, L){{
+  const mins = Math.round((now - dt) / 60000);
+  if (mins < 60) return Math.max(mins,0) + L.relMin;
+  const hrs = Math.round(mins/60);
+  if (hrs < 24) return hrs + L.relHour;
+  return Math.round(hrs/24) + L.relDay;
+}}
+
+const TOPIC_SYNONYMS = {{
+  "futbol": ["galatasaray","fenerbahçe","beşiktaş","trabzonspor","süper lig","transfer","gol","maç","uefa","şampiyonlar ligi","milli takım","futbolcu","football","soccer"],
+  "spor": ["futbol","basketbol","voleybol","galatasaray","fenerbahçe","beşiktaş","milli takım","euroleague","sport"],
+  "ekonomi": ["dolar","euro","enflasyon","borsa","faiz","tcmb","merkez bankası","ihracat","ithalat","economy","market"],
+  "siyaset": ["chp","akp","mhp","iyi parti","meclis","bakan","cumhurbaşkanı","seçim","parti","politics"],
+  "magazin": ["ünlü","oyuncu","şarkıcı","dizi","influencer","boşandı","evlendi","celebrity"],
+  "teknoloji": ["yapay zeka","yazılım","uygulama","telefon","apple","google","microsoft","tech","ai"]
+}};
+
+const TOPIC_LABELS = {{
+  tr: {{futbol:"Futbol", spor:"Spor", ekonomi:"Ekonomi", siyaset:"Siyaset", magazin:"Magazin", teknoloji:"Teknoloji"}},
+  en: {{futbol:"Football", spor:"Sports", ekonomi:"Economy", siyaset:"Politics", magazin:"Celebrity", teknoloji:"Tech"}}
+}};
+
+function getWordsArray(inputEl){{
+  return inputEl.value.split(',').map(w => w.trim()).filter(w => w.length > 0);
+}}
+
+function toggleTopicChip(inputEl, topic, storageKey){{
+  const words = getWordsArray(inputEl).map(w => w.toLocaleLowerCase('tr'));
+  const idx = words.indexOf(topic);
+  if (idx >= 0) words.splice(idx, 1); else words.push(topic);
+  inputEl.value = words.join(', ');
+  currentPage = 1;
+  try {{ localStorage.setItem(storageKey, inputEl.value); }} catch(e) {{}}
+  render();
+}}
+
+function buildTopicChips(containerId, inputEl, storageKey){{
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  const activeWords = getWordsArray(inputEl).map(w => w.toLocaleLowerCase('tr'));
+  Object.keys(TOPIC_SYNONYMS).forEach(topic => {{
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'topic-chip' + (activeWords.includes(topic) ? ' active' : '');
+    btn.textContent = TOPIC_LABELS[lang][topic] || topic;
+    btn.addEventListener('click', () => toggleTopicChip(inputEl, topic, storageKey));
+    el.appendChild(btn);
+  }});
+}}
+
+function expandWords(words){{
+  const expanded = new Set(words);
+  words.forEach(w => {{
+    if (TOPIC_SYNONYMS[w]) {{
+      TOPIC_SYNONYMS[w].forEach(syn => expanded.add(syn.toLocaleLowerCase('tr')));
+    }}
+  }});
+  return [...expanded];
+}}
+
+function parseWords(text){{
+  return text.split(',').map(w => w.trim().toLocaleLowerCase('tr')).filter(w => w.length > 0);
+}}
+
+function matchesFilter(text, hideWords, onlyWords){{
+  const t = text.toLocaleLowerCase('tr');
+  if (onlyWords.length > 0 && !onlyWords.some(w => t.includes(w))) return false;
+  if (hideWords.some(w => t.includes(w))) return false;
+  return true;
+}}
+
+function render(){{
+  const L = I18N[lang];
+  document.documentElement.lang = lang;
+  document.getElementById('pageTitle').textContent = L.title;
+  document.getElementById('pageSub').textContent = L.sub;
+  document.getElementById('langToggle').textContent = L.toggleLabel;
+  document.getElementById('pageFooter').textContent = L.footer(GENERATED);
+  document.getElementById('hideLabel').textContent = L.hideLabel;
+  document.getElementById('onlyLabel').textContent = L.onlyLabel;
+  document.getElementById('hideInput').placeholder = L.hidePlaceholder;
+  document.getElementById('onlyInput').placeholder = L.onlyPlaceholder;
+  document.getElementById('sourcesLabel').textContent = L.sourcesLabel;
+  document.getElementById('importantLabel').textContent = L.importantLabel;
+  document.getElementById('importantInput').placeholder = L.importantPlaceholder;
+
+  const sortBtn = document.getElementById('sortToggle');
+  sortBtn.textContent = sortMode === 'chrono' ? L.sortToImportance : L.sortToChrono;
+  sortBtn.classList.toggle('active', sortMode === 'importance');
+
+  buildTabs();
+  buildTopicChips('hideTopicChips', hideInputEl, 'sakinakis_hide');
+  buildTopicChips('onlyTopicChips', onlyInputEl, 'sakinakis_only');
+  buildTopicChips('importantTopicChips', importantInputEl, 'sakinakis_important');
+  buildSourceToggles();
+
+  const hideRaw = parseWords(document.getElementById('hideInput').value);
+  const onlyRaw = parseWords(document.getElementById('onlyInput').value);
+  const importantRaw = parseWords(document.getElementById('importantInput').value);
+  const hideWords = expandWords(hideRaw);
+  const onlyWords = expandWords(onlyRaw);
+  const importantWords = expandWords(importantRaw);
+  let filtered = DATA.filter(it =>
+    it.category === currentTab &&
+    activeSources.has(it.sourceId) &&
+    matchesFilter(it.title, hideWords, onlyWords)
+  );
+
+  const extras = [...new Set([...hideWords, ...onlyWords, ...importantWords])]
+    .filter(w => !hideRaw.includes(w) && !onlyRaw.includes(w) && !importantRaw.includes(w));
+  document.getElementById('filterHint').textContent = extras.length > 0 ? L.expandedHint(extras) : '';
+
+  document.getElementById('filterStatus').textContent = L.filterStatus(filtered.length, DATA.length);
+
+  const now = new Date();
+  const feed = document.getElementById('feed');
+  if (filtered.length === 0){{
+    feed.innerHTML = `<div class="empty">${{L.empty}}</div>`;
+    return;
+  }}
+
+  function sortClustersByMode(arr){{
+    if (sortMode === 'importance'){{
+      return arr.map(cluster => {{
+        const primary = cluster[0];
+        const t = primary.title.toLocaleLowerCase('tr');
+        const keywordHit = importantWords.some(w => t.includes(w));
+        const score = (cluster.length - 1) + (keywordHit ? 1000 : 0);
+        return {{ cluster, score }};
+      }}).sort((a, b) => b.score - a.score || (new Date(b.cluster[0].date) - new Date(a.cluster[0].date)))
+        .map(x => x.cluster);
+    }}
+    return [...arr].sort((a, b) => new Date(b[0].date) - new Date(a[0].date));
+  }}
+
+  function isClusterSeen(cluster){{
+    return cluster.every(it => seenLinks.has(it.link));
+  }}
+
+  const sortedForClustering = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const allClusters = clusterItems(sortedForClustering);
+  const unseenClusters = sortClustersByMode(allClusters.filter(c => !isClusterSeen(c)));
+  const seenClusters = sortClustersByMode(allClusters.filter(c => isClusterSeen(c)));
+  const orderedClusters = [...unseenClusters, ...seenClusters];
+
+  const totalPages = Math.max(1, Math.ceil(orderedClusters.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageClusters = orderedClusters.slice(pageStart, pageStart + PAGE_SIZE);
+
+  let html = '';
+  let lastLabel = null;
+  pageClusters.forEach(cluster => {{
+    const newest = cluster[0];
+    const isMulti = cluster.length > 1;
+    const isSeen = isClusterSeen(cluster);
+    const dt = new Date(newest.date);
+    if (sortMode === 'chrono'){{
+      const dl = dateLabel(dt, now, L);
+      if (dl !== lastLabel){{
+        html += `<div class="date-divider">${{dl}}</div>`;
+        lastLabel = dl;
+      }}
+    }}
+
+    const aiSummaryItem = cluster.find(m => m.aiSummary);
+    const shortest = isMulti ? [...cluster].sort((a, b) => a.title.length - b.title.length)[0] : newest;
+    const headlineLink = aiSummaryItem || shortest;
+    const headlineText = aiSummaryItem ? aiSummaryItem.aiSummary : shortest.title;
+
+    const thumb = newest.image
+      ? `<img class="thumb" src="${{newest.image}}" alt="" loading="lazy" onerror="this.remove();">`
+      : '';
+    const eyeBtn = `<button class="eye-btn" title="${{isSeen ? L.markUnseen : L.markSeen}}">${{isSeen ? EYE_OFF_ICON : EYE_ICON}}</button>`;
+
+    const metaHtml = isMulti
+      ? `<span class="coverage-badge">${{L.coverageBadge(cluster.length)}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span>`
+      : `<span class="swatch" style="background:${{newest.color}}"></span><span>${{newest.source}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span>`;
+
+    const sourcesListHtml = isMulti
+      ? `<div class="cluster-sources">` + cluster.map(m => `
+          <div class="cluster-source-row">
+            <span class="swatch" style="background:${{m.color}}"></span>
+            <span class="cluster-source-name">${{m.source}}</span>
+            <a href="${{m.link}}" target="_blank" rel="noopener">${{m.title}}</a>
+          </div>`).join('') + `</div>`
+      : '';
+
+    html += `
+      <div class="item${{isSeen ? ' seen' : ''}}">
+        <div class="item-body">
+          <div class="item-meta">
+            ${{metaHtml}}
+            <span>&middot;</span>${{eyeBtn}}
+          </div>
+          <h2><a href="${{headlineLink.link}}" target="_blank" rel="noopener">${{headlineText}}</a></h2>
+          ${{sourcesListHtml}}
+        </div>
+        ${{thumb}}
+      </div>`;
+  }});
+  feed.innerHTML = html;
+
+  const pagEl = document.getElementById('pagination');
+  if (totalPages > 1){{
+    pagEl.innerHTML = `
+      <button class="page-btn" id="firstPageBtn" ${{currentPage === 1 ? 'disabled' : ''}}>${{L.firstPage}}</button>
+      <button class="page-btn" id="prevPageBtn" ${{currentPage === 1 ? 'disabled' : ''}}>${{L.prevPage}}</button>
+      <span class="page-indicator">${{L.pageIndicator(currentPage, totalPages)}}</span>
+      <button class="page-btn" id="nextPageBtn" ${{currentPage === totalPages ? 'disabled' : ''}}>${{L.nextPage}}</button>
+      <button class="page-btn" id="lastPageBtn" ${{currentPage === totalPages ? 'disabled' : ''}}>${{L.lastPage}}</button>`;
+    document.getElementById('firstPageBtn').addEventListener('click', () => {{
+      currentPage = 1;
+      render();
+      window.scrollTo({{ top: 0, behavior: 'instant' }});
+    }});
+    document.getElementById('prevPageBtn').addEventListener('click', () => {{
+      currentPage--;
+      render();
+      window.scrollTo({{ top: 0, behavior: 'instant' }});
+    }});
+    document.getElementById('nextPageBtn').addEventListener('click', () => {{
+      currentPage++;
+      render();
+      window.scrollTo({{ top: 0, behavior: 'instant' }});
+    }});
+    document.getElementById('lastPageBtn').addEventListener('click', () => {{
+      currentPage = totalPages;
+      render();
+      window.scrollTo({{ top: 0, behavior: 'instant' }});
+    }});
+  }} else {{
+    pagEl.innerHTML = '';
+  }}
+
+  const itemEls = feed.querySelectorAll('.item');
+  itemEls.forEach((el, idx) => {{
+    const cluster = pageClusters[idx];
+    const eyeBtn = el.querySelector('.eye-btn');
+    eyeBtn.addEventListener('click', (e) => {{
+      e.preventDefault();
+      const shouldMark = !isClusterSeen(cluster);
+      cluster.forEach(it => {{
+        if (shouldMark) seenLinks.add(it.link); else seenLinks.delete(it.link);
+      }});
+      try {{ localStorage.setItem('sakinakis_seen', JSON.stringify([...seenLinks])); }} catch(err) {{}}
+      render();
+    }});
+  }});
+}}
+
+document.getElementById('langToggle').addEventListener('click', () => {{
+  lang = lang === 'tr' ? 'en' : 'tr';
+  render();
+}});
+
+const hideInputEl = document.getElementById('hideInput');
+const onlyInputEl = document.getElementById('onlyInput');
+const importantInputEl = document.getElementById('importantInput');
+
+try {{
+  hideInputEl.value = localStorage.getItem('sakinakis_hide') || '';
+  onlyInputEl.value = localStorage.getItem('sakinakis_only') || '';
+  importantInputEl.value = localStorage.getItem('sakinakis_important') || '';
+  const savedSources = localStorage.getItem('sakinakis_sources');
+  if (savedSources) activeSources = new Set(JSON.parse(savedSources));
+  sortMode = localStorage.getItem('sakinakis_sortmode') || 'chrono';
+  currentTab = localStorage.getItem('sakinakis_tab') || 'haber';
+  const savedSeen = localStorage.getItem('sakinakis_seen');
+  if (savedSeen) seenLinks = new Set(JSON.parse(savedSeen));
+}} catch(e) {{ /* localStorage yoksa sessizce devam */ }}
+
+document.getElementById('sortToggle').addEventListener('click', () => {{
+  sortMode = sortMode === 'chrono' ? 'importance' : 'chrono';
+  currentPage = 1;
+  try {{ localStorage.setItem('sakinakis_sortmode', sortMode); }} catch(e) {{}}
+  render();
+}});
+
+let filterDebounce;
+function onFilterInput(){{
+  clearTimeout(filterDebounce);
+  filterDebounce = setTimeout(() => {{
+    try {{
+      localStorage.setItem('sakinakis_hide', hideInputEl.value);
+      localStorage.setItem('sakinakis_only', onlyInputEl.value);
+      localStorage.setItem('sakinakis_important', importantInputEl.value);
+    }} catch(e) {{ /* yoksay */ }}
+    currentPage = 1;
+    render();
+  }}, 250);
+}}
+hideInputEl.addEventListener('input', onFilterInput);
+onlyInputEl.addEventListener('input', onFilterInput);
+importantInputEl.addEventListener('input', onFilterInput);
+
+render();
+</script>
+</body></html>"""
+
+
+
+def main():
+    print("Kaynaklar cekiliyor...")
+    all_items = []
+    for src in SOURCES:
+        try:
+            raw = fetch_feed(src["rss"])
+            items = parse_items(raw, src)
+            all_items.extend(items)
+            print(f"  [OK] {src['name']}: {len(items)} haber")
+        except Exception as e:
+            print(f"  [HATA] {src['name']}: {e}")
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    clusters = cluster_items_for_summary(all_items)
+    multi_clusters = [c for c in clusters if len(c) >= 2]
+    if multi_clusters:
+        if api_key:
+            print(f"\n{len(multi_clusters)} kume icin AI ozeti isteniyor...")
+            title_groups = [[it["title"] for it in c] for c in multi_clusters]
+            summaries = summarize_clusters_with_ai(title_groups, api_key)
+            if summaries:
+                for cluster, summary in zip(multi_clusters, summaries):
+                    for it in cluster:
+                        it["ai_summary"] = summary
+                print(f"  {len(summaries)} ozet basariyla alindi")
+            else:
+                print("  AI ozeti alinamadi, en kisa baslik yontemine donuluyor")
+        else:
+            print(
+                f"\n{len(multi_clusters)} kumelenmis haber var ama ANTHROPIC_API_KEY "
+                "tanimli degil, AI ozeti atlanacak (en kisa baslik kullanilacak)"
+            )
+
+    html = build_html(all_items)
+
+    is_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    if is_ci:
+        out_dir = "dist"
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = os.path.join(out_dir, "index.html")
+    else:
+        out_dir = os.path.dirname(os.path.abspath(__file__))
+        out_path = os.path.join(out_dir, "sakin_akis_ciktisi.html")
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    print(f"\nHazir: {out_path}")
+    if not is_ci:
+        webbrowser.open("file://" + out_path)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
