@@ -20,6 +20,7 @@ import ssl
 import re
 import json
 import base64
+import concurrent.futures
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timezone
@@ -106,6 +107,35 @@ def find_image_in_html(text):
         return None
     m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', text)
     return m.group(1) if m else None
+
+
+OG_IMAGE_PATTERNS = [
+    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.IGNORECASE),
+    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE),
+]
+
+
+def fetch_og_image(url):
+    """Bir makale sayfasina gidip og:image / twitter:image meta etiketini bulur.
+    RSS'te gorsel gelmeyen kaynaklar (cogunlukla Google News uzerinden gelenler)
+    icin gercek makale gorselini alma yolu. Bu, GitHub Actions uzerinde arka
+    planda calistigi icin (kullanici beklemedigi icin) yavasligi sorun degil --
+    sadece kullanicinin kendi bilgisayarinda calistirirken (webbrowser.open
+    oncesi) dikkatli olunmali, o yuzden sadece eksik gorseller icin calisir."""
+    try:
+        req = urllib.request.Request(url, headers=HEADERS)
+        ctx = ssl.create_default_context()
+        with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
+            final_url = resp.geturl()
+            data = resp.read(80000).decode("utf-8", errors="ignore")
+        for pattern in OG_IMAGE_PATTERNS:
+            m = pattern.search(data)
+            if m:
+                return urllib.parse.urljoin(final_url, m.group(1))
+    except Exception:
+        pass
+    return None
 
 
 def make_placeholder_image(source_name, color):
@@ -516,7 +546,7 @@ font-size:11px;color:var(--ink-soft);margin-bottom:6px}}
 color:var(--ink-soft);display:inline-flex;align-items:center;line-height:0}}
 .eye-btn:hover{{color:var(--accent)}}
 .eye-btn svg{{width:14px;height:14px}}
-.thumb{{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--rule);
+.thumb{{width:100%;aspect-ratio:2.2/1;object-fit:cover;background:var(--rule);
 margin-bottom:14px;display:block}}
 .empty{{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);
 padding:40px 0;text-align:center}}
@@ -1125,6 +1155,8 @@ render();
 
 
 def main():
+    is_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+
     print("Kaynaklar çekiliyor...")
     all_items = []
     for src in SOURCES:
@@ -1135,6 +1167,27 @@ def main():
             print(f"  [OK] {src['name']}: {len(items)} haber")
         except Exception as e:
             print(f"  [HATA] {src['name']}: {e}")
+
+    # Gorsel arama: yerelde (kullanicinin kendi bilgisayarinda, tarayicida
+    # acilmayi bekledigi durumda) yavasligi onlemek icin atlanir, sadece
+    # placeholder kullanilir. GitHub Actions'ta ise kullanici beklemedigi
+    # icin (arka planda calisiyor) gercek makale gorsellerini aramaya deger.
+    if is_ci:
+        missing = [it for it in all_items if not it.get("image")]
+        if missing:
+            print(f"\nGörseli olmayan {len(missing)} haber için kaynak sayfasından görsel aranıyor...")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                future_to_item = {executor.submit(fetch_og_image, it["link"]): it for it in missing}
+                for future in concurrent.futures.as_completed(future_to_item):
+                    it = future_to_item[future]
+                    try:
+                        img = future.result()
+                        if img:
+                            it["image"] = img
+                    except Exception:
+                        pass
+            found = sum(1 for it in missing if it.get("image"))
+            print(f"  {found}/{len(missing)} haber için gerçek görsel bulundu")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     clusters = cluster_items_for_summary(all_items)
@@ -1159,7 +1212,6 @@ def main():
 
     html = build_html(all_items)
 
-    is_ci = os.environ.get("GITHUB_ACTIONS") == "true"
     if is_ci:
         out_dir = "dist"
         os.makedirs(out_dir, exist_ok=True)
