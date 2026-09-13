@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Sakin Akis - algoritmasiz, kronolojik haber okuyucu.
+Sakin Akış - algoritmasız, kronolojik haber okuyucu.
 
-Bu script bilgisayarindan dogrudan RSS kaynaklarina baglanir
-(tarayici sandbox'i degil, senin gercek internet baglantin),
-haberleri zaman sirasina gore bir HTML sayfasinda toplar ve
-otomatik olarak tarayicida acar.
+Bu script bilgisayarından doğrudan RSS kaynaklarına bağlanır
+(tarayıcı sandbox'ı değil, senin gerçek internet bağlantın),
+haberleri zaman sırasına göre bir HTML sayfasında toplar ve
+otomatik olarak tarayıcıda açar.
 
-Kullanim:
+Kullanım:
     python sakin_akis.py
 
-Sadece Python'un kendi kutuphaneleri kullanilir, ek kurulum (pip) gerekmez.
+Sadece Python'un kendi kütüphaneleri kullanılır, ek kurulum (pip) gerekmez.
 """
 
 import urllib.request
@@ -33,7 +34,7 @@ SOURCES = [
      "rss": "https://news.google.com/rss/search?q=site:apnews.com+when:3d&hl=en-US&gl=US&ceid=US:en"},
     {"id": "bbc_en", "name": "BBC (EN)", "color": "#7A1F2B", "category": "haber",
      "rss": "http://feeds.bbci.co.uk/news/world/rss.xml"},
-    {"id": "bbc_tr", "name": "BBC Turkce", "color": "#7A1F2B", "category": "haber",
+    {"id": "bbc_tr", "name": "BBC Türkçe", "color": "#7A1F2B", "category": "haber",
      "rss": "https://feeds.bbci.co.uk/turkce/rss.xml"},
     {"id": "cumhuriyet", "name": "Cumhuriyet", "color": "#4B4633", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:cumhuriyet.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
@@ -433,7 +434,7 @@ def build_html(all_items):
     return f"""<!DOCTYPE html>
 <html lang="tr"><head><meta charset="UTF-8">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,{favicon_b64}">
-<title>Sakin Akis</title>
+<title>Sakin Akış</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
 :root{{--paper:#E7E3D8;--ink:#22252A;--ink-soft:#5B5D57;--rule:#C9C3B2;--accent:#A6432D;}}
@@ -523,24 +524,24 @@ margin-top:40px;padding-top:16px;border-top:1px solid var(--rule)}}
 </style></head><body>
 <button class="lang-toggle" id="langToggle">EN</button>
 <div class="wrap">
-<header><h1 id="pageTitle">Sakin Akis</h1><p class="sub" id="pageSub">algoritma yok &middot; reklam yok &middot; kronolojik sira</p></header>
+<header><h1 id="pageTitle">Sakin Akış</h1><p class="sub" id="pageSub">algoritma yok &middot; reklam yok &middot; kronolojik sıra</p></header>
 <div class="tabs" id="mainTabs"></div>
 <div class="sources-label" id="sourcesLabel">kaynaklar</div>
 <div class="sources" id="sourceToggles"></div>
 <div class="filters">
   <div class="filter-field">
-    <label id="hideLabel" for="hideInput">gizle (virgulle ayir)</label>
-    <input type="text" id="hideInput" placeholder="orn: transfer, magazin">
+    <label id="hideLabel" for="hideInput">gizle (virgülle ayır)</label>
+    <input type="text" id="hideInput" placeholder="örn: transfer, magazin">
     <div class="topic-chips" id="hideTopicChips"></div>
   </div>
   <div class="filter-field">
-    <label id="onlyLabel" for="onlyInput">sadece goster (virgulle ayir)</label>
-    <input type="text" id="onlyInput" placeholder="orn: ekonomi, teknoloji">
+    <label id="onlyLabel" for="onlyInput">sadece göster (virgülle ayır)</label>
+    <input type="text" id="onlyInput" placeholder="örn: ekonomi, teknoloji">
     <div class="topic-chips" id="onlyTopicChips"></div>
   </div>
   <div class="filter-field">
-    <label id="importantLabel" for="importantInput">onemli (virgulle ayir)</label>
-    <input type="text" id="importantInput" placeholder="orn: deprem, secim, savas">
+    <label id="importantLabel" for="importantInput">önemli (virgülle ayır)</label>
+    <input type="text" id="importantInput" placeholder="örn: deprem, seçim, savaş">
     <div class="topic-chips" id="importantTopicChips"></div>
   </div>
 </div>
@@ -672,34 +673,34 @@ function clusterItems(items){{
 
 const I18N = {{
   tr: {{
-    title: "Sakin Akis",
-    sub: "algoritma yok \\u00b7 reklam yok \\u00b7 kronolojik sira",
-    today: "bugun", yesterday: "dun",
-    months: ["Ocak","Subat","Mart","Nisan","Mayis","Haziran","Temmuz","Agustos","Eylul","Ekim","Kasim","Aralik"],
+    title: "Sakin Akış",
+    sub: "algoritma yok \\u00b7 reklam yok \\u00b7 kronolojik sıra",
+    today: "bugün", yesterday: "dün",
+    months: ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"],
     relMin: "dk", relHour: "sa", relDay: "g",
-    empty: "Hic haber cekilemedi.",
-    footer: t => `Olusturulma: ${{t}} \\u00b7 yenilemek icin scripti tekrar calistir`,
+    empty: "Hiç haber çekilemedi.",
+    footer: t => `Oluşturulma: ${{t}} \\u00b7 yenilemek için scripti tekrar çalıştır`,
     toggleLabel: "EN",
-    hideLabel: "gizle (virgulle ayir)",
-    onlyLabel: "sadece goster (virgulle ayir)",
-    hidePlaceholder: "orn: transfer, magazin",
-    onlyPlaceholder: "orn: ekonomi, teknoloji",
-    filterStatus: (shown, total) => `${{shown}} / ${{total}} haber gosteriliyor`,
-    readFull: "kaynakta ac",
+    hideLabel: "gizle (virgülle ayır)",
+    onlyLabel: "sadece göster (virgülle ayır)",
+    hidePlaceholder: "örn: transfer, magazin",
+    onlyPlaceholder: "örn: ekonomi, teknoloji",
+    filterStatus: (shown, total) => `${{shown}} / ${{total}} haber gösteriliyor`,
+    readFull: "kaynakta aç",
     sourcesLabel: "kaynaklar",
-    expandedHint: words => `genisletilmis eslesme: ${{words.join(', ')}} de dahil`,
-    importantLabel: "onemli (virgulle ayir)",
-    importantPlaceholder: "orn: deprem, secim, savas",
-    sortToChrono: "kronolojik goster",
-    sortToImportance: "onem sirasina gor",
+    expandedHint: words => `genişletilmiş eşleşme: ${{words.join(', ')}} de dahil`,
+    importantLabel: "önemli (virgülle ayır)",
+    importantPlaceholder: "örn: deprem, seçim, savaş",
+    sortToChrono: "kronolojik göster",
+    sortToImportance: "önem sırasına gör",
     coverageBadge: n => `${{n}} kaynakta`,
     tabNews: "Haberler",
     tabGames: "Oyunlar",
-    markSeen: "gordum olarak isaretle",
-    markUnseen: "tekrar yukari cikar",
-    prevPage: "Onceki",
+    markSeen: "gördüm olarak işaretle",
+    markUnseen: "tekrar yukarı çıkar",
+    prevPage: "Önceki",
     nextPage: "Sonraki",
-    firstPage: "Basa Don",
+    firstPage: "Başa Dön",
     lastPage: "Sona Git",
     pageIndicator: (cur, total) => `Sayfa ${{cur}} / ${{total}}`
   }},
@@ -1056,6 +1057,7 @@ function render(){{
 
 document.getElementById('langToggle').addEventListener('click', () => {{
   lang = lang === 'tr' ? 'en' : 'tr';
+  try {{ localStorage.setItem('sakinakis_lang', lang); }} catch(e) {{}}
   render();
 }});
 
@@ -1064,6 +1066,7 @@ const onlyInputEl = document.getElementById('onlyInput');
 const importantInputEl = document.getElementById('importantInput');
 
 try {{
+  lang = localStorage.getItem('sakinakis_lang') || 'tr';
   hideInputEl.value = localStorage.getItem('sakinakis_hide') || '';
   onlyInputEl.value = localStorage.getItem('sakinakis_only') || '';
   importantInputEl.value = localStorage.getItem('sakinakis_important') || '';
@@ -1106,7 +1109,7 @@ render();
 
 
 def main():
-    print("Kaynaklar cekiliyor...")
+    print("Kaynaklar çekiliyor...")
     all_items = []
     for src in SOURCES:
         try:
@@ -1122,20 +1125,20 @@ def main():
     multi_clusters = [c for c in clusters if len(c) >= 2]
     if multi_clusters:
         if api_key:
-            print(f"\n{len(multi_clusters)} kume icin AI ozeti isteniyor...")
+            print(f"\n{len(multi_clusters)} küme için AI özeti isteniyor...")
             title_groups = [[it["title"] for it in c] for c in multi_clusters]
             summaries = summarize_clusters_with_ai(title_groups, api_key)
             if summaries:
                 for cluster, summary in zip(multi_clusters, summaries):
                     for it in cluster:
                         it["ai_summary"] = summary
-                print(f"  {len(summaries)} ozet basariyla alindi")
+                print(f"  {len(summaries)} özet başarıyla alındı")
             else:
-                print("  AI ozeti alinamadi, en kisa baslik yontemine donuluyor")
+                print("  AI özeti alınamadı, en kısa başlık yöntemine dönülüyor")
         else:
             print(
-                f"\n{len(multi_clusters)} kumelenmis haber var ama ANTHROPIC_API_KEY "
-                "tanimli degil, AI ozeti atlanacak (en kisa baslik kullanilacak)"
+                f"\n{len(multi_clusters)} kümelenmiş haber var ama ANTHROPIC_API_KEY "
+                "tanımlı değil, AI özeti atlanacak (en kısa başlık kullanılacak)"
             )
 
     html = build_html(all_items)
@@ -1152,7 +1155,7 @@ def main():
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"\nHazir: {out_path}")
+    print(f"\nHazır: {out_path}")
     if not is_ci:
         webbrowser.open("file://" + out_path)
 
