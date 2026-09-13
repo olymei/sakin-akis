@@ -55,11 +55,11 @@ SOURCES = [
     {"id": "minecraft", "name": "Minecraft", "color": "#4E8B3B", "category": "oyun",
      "rss": "https://news.google.com/rss/search?q=minecraft+update+when:7d&hl=en-US&gl=US&ceid=US:en"},
     {"id": "tft", "name": "TFT", "color": "#C89B3C", "category": "oyun",
-     "rss": "https://news.google.com/rss/search?q=%22Teamfight+Tactics%22+patch+when:7d&hl=en-US&gl=US&ceid=US:en"},
+     "rss": "https://news.google.com/rss/search?q=%22Teamfight+Tactics%22+when:7d&hl=en-US&gl=US&ceid=US:en"},
     {"id": "valorant", "name": "Valorant", "color": "#B8384A", "category": "oyun",
-     "rss": "https://news.google.com/rss/search?q=Valorant+patch+when:7d&hl=en-US&gl=US&ceid=US:en"},
+     "rss": "https://news.google.com/rss/search?q=Valorant+when:3d&hl=en-US&gl=US&ceid=US:en"},
     {"id": "lol", "name": "League of Legends", "color": "#0F3E6B", "category": "oyun",
-     "rss": "https://news.google.com/rss/search?q=%22League+of+Legends%22+patch+when:7d&hl=en-US&gl=US&ceid=US:en"},
+     "rss": "https://news.google.com/rss/search?q=%22League+of+Legends%22+when:3d&hl=en-US&gl=US&ceid=US:en"},
     {"id": "r6siege", "name": "Rainbow Six Siege", "color": "#3C4A3E", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/359550/?cc=us&l=english"},
     {"id": "cs2", "name": "Counter-Strike 2", "color": "#8C7A4B", "category": "oyun",
@@ -503,20 +503,21 @@ border-left:none;border-right:none}}
 .src-toggle .swatch{{width:9px;height:9px;flex-shrink:0}}
 .date-divider{{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);
 margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}}
-.item{{padding:16px 0;border-bottom:1px solid var(--rule);
-display:flex;align-items:flex-start;gap:14px;justify-content:space-between}}
+.item{{padding:0 0 22px;margin-bottom:22px;border-bottom:1px solid var(--rule);
+display:flex;flex-direction:column}}
 .item-body{{flex:1;min-width:0}}
 .item-meta{{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;
 font-size:11px;color:var(--ink-soft);margin-bottom:6px}}
 .swatch{{width:9px;height:9px;flex-shrink:0}}
-.item h2{{font-size:18px;line-height:1.35;font-weight:600;margin:0}}
+.item h2{{font-size:19px;line-height:1.35;font-weight:600;margin:0}}
 .item a{{color:var(--ink);text-decoration:none}} .item a:hover{{color:var(--accent)}}
 .item.seen{{opacity:0.5}}
 .eye-btn{{background:none;border:none;padding:0;margin:0;cursor:pointer;
 color:var(--ink-soft);display:inline-flex;align-items:center;line-height:0}}
 .eye-btn:hover{{color:var(--accent)}}
 .eye-btn svg{{width:14px;height:14px}}
-.thumb{{width:92px;height:92px;object-fit:cover;flex-shrink:0;background:var(--rule)}}
+.thumb{{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--rule);
+margin-bottom:14px;display:block}}
 .empty{{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);
 padding:40px 0;text-align:center}}
 footer{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);
@@ -955,7 +956,10 @@ function render(){{
   }}
 
   const sortedForClustering = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const allClusters = clusterItems(sortedForClustering);
+  // Oyunlar sekmesinde kumeleme yok -- her haber kendi kartinda kalir
+  const allClusters = currentTab === 'oyun'
+    ? sortedForClustering.map(it => [it])
+    : clusterItems(sortedForClustering);
   const unseenClusters = sortClustersByMode(allClusters.filter(c => !isClusterSeen(c)));
   const seenClusters = sortClustersByMode(allClusters.filter(c => isClusterSeen(c)));
   const orderedClusters = [...unseenClusters, ...seenClusters];
@@ -1006,6 +1010,7 @@ function render(){{
 
     html += `
       <div class="item${{isSeen ? ' seen' : ''}}">
+        ${{thumb}}
         <div class="item-body">
           <div class="item-meta">
             ${{metaHtml}}
@@ -1014,7 +1019,6 @@ function render(){{
           <h2><a href="${{headlineLink.link}}" target="_blank" rel="noopener">${{headlineText}}</a></h2>
           ${{sourcesListHtml}}
         </div>
-        ${{thumb}}
       </div>`;
   }});
   feed.innerHTML = html;
