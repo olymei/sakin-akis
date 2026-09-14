@@ -156,7 +156,7 @@ WIKIPEDIA_HEADERS = {
 # bunu tam genislikte kartta gostermek bulaniklastirir. URL'deki genislik
 # degerini (orn. ".../320px-Isim.jpg") daha buyuk bir sayiyla degistirip
 # daha net bir versiyon istiyoruz.
-THUMBNAIL_TARGET_WIDTH = 800
+THUMBNAIL_TARGET_WIDTH = 1400
 
 
 def upsize_thumbnail_url(url):
@@ -167,8 +167,10 @@ def upsize_thumbnail_url(url):
 
 def fetch_wikipedia_thumbnail(title, lang="tr"):
     """Wikipedia'nin ucretsiz, anahtar gerektirmeyen ozet API'sinden bir
-    sayfanin kapak/tanitim gorselini ceker. Sayfa yoksa veya gorseli yoksa
-    None doner (hata firlatmaz)."""
+    sayfanin kapak/tanitim gorselini ceker. Once ORIJINAL (tam cozunurluklu)
+    gorseli tercih ediyoruz -- URL buyutme numarasindan (regex ile "NNNpx-"
+    degistirmek) cok daha guvenilir, cunku API bize dogrudan orijinal
+    dosyanin linkini veriyor. Sayfa yoksa veya gorseli yoksa None doner."""
     try:
         safe_title = urllib.parse.quote(title.replace(" ", "_"))
         url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{safe_title}"
@@ -176,6 +178,9 @@ def fetch_wikipedia_thumbnail(title, lang="tr"):
         ctx = ssl.create_default_context()
         with urllib.request.urlopen(req, timeout=6, context=ctx) as resp:
             data = json.loads(resp.read().decode("utf-8"))
+        original = data.get("originalimage", {}).get("source")
+        if original:
+            return original
         thumb = data.get("thumbnail", {}).get("source")
         return upsize_thumbnail_url(thumb)
     except Exception:
@@ -962,22 +967,23 @@ const TOPIC_SYNONYMS = {{
   "siyaset": ["chp","akp","mhp","iyi parti","meclis","bakan","cumhurbaşkanı","seçim","parti","politics"],
   "magazin": ["ünlü","oyuncu","şarkıcı","dizi","influencer","boşandı","evlendi","celebrity"],
   "teknoloji": ["yapay zeka","yazılım","uygulama","telefon","apple","google","microsoft","tech","ai"],
-  "guncelleme": ["patch","update","yama","sürüm","hotfix","düzeltme","bug fix","balance"],
-  "turnuva": ["tournament","championship","şampiyona","esports","e-spor","major","worlds","playoffs","lig","turnuva"],
-  "yeniicerik": ["dlc","yeni harita","yeni ajan","yeni şampiyon","yeni karakter","genişleme","expansion","yeni mod","new content","reveal","yeni silah","yeni sezon","season"],
-  "indirim": ["sale","discount","indirim","kampanya","fırsat","ücretsiz","free weekend"]
+  "patchnotes": ["patch","update","yama","sürüm","hotfix","düzeltme","bug fix","balance","sürüm notları","patch notes"],
+  "digeroyun": ["tournament","championship","şampiyona","esports","e-spor","major","worlds","playoffs","lig","turnuva",
+                "dlc","yeni harita","yeni ajan","yeni şampiyon","yeni karakter","genişleme","expansion","yeni mod",
+                "new content","reveal","yeni silah","yeni sezon","season","sale","discount","indirim","kampanya",
+                "fırsat","ücretsiz","free weekend"]
 }};
 
 const TOPIC_LABELS = {{
   tr: {{futbol:"Futbol", spor:"Spor", ekonomi:"Ekonomi", siyaset:"Siyaset", magazin:"Magazin", teknoloji:"Teknoloji",
-        guncelleme:"Güncelleme", turnuva:"Turnuva", yeniicerik:"Yeni İçerik", indirim:"İndirim"}},
+        patchnotes:"Patch Notes", digeroyun:"Diğer"}},
   en: {{futbol:"Football", spor:"Sports", ekonomi:"Economy", siyaset:"Politics", magazin:"Celebrity", teknoloji:"Tech",
-        guncelleme:"Update", turnuva:"Tournament", yeniicerik:"New Content", indirim:"Sale"}}
+        patchnotes:"Patch Notes", digeroyun:"Other"}}
 }};
 
 const TOPIC_KEYS_BY_TAB = {{
   haber: ["futbol","spor","ekonomi","siyaset","magazin","teknoloji"],
-  oyun: ["guncelleme","turnuva","yeniicerik","indirim"]
+  oyun: ["patchnotes","digeroyun"]
 }};
 
 function hideStorageKey(){{ return 'sakinakis_hide_' + currentTab; }}
