@@ -109,33 +109,83 @@ def find_image_in_html(text):
     return m.group(1) if m else None
 
 
-OG_IMAGE_PATTERNS = [
-    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE),
-    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.IGNORECASE),
-    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE),
-]
+def extract_entity_candidates(title):
+    """Basliktaki BUYUK HARFLE baslayan kelimeleri, orijinal harfleriyle
+    (Wikipedia sorgusu icin) cikarir; en uzun (muhtemelen en spesifik) aday
+    once denenir. extract_proper_nouns'a benzer ama kucuk harfe cevirmez."""
+    raw_words = title.split()
+    candidates = []
+    for w in raw_words:
+        stem = re.split(r"['\u2019]", w)[0]
+        stem = re.sub(r"[^\w]", "", stem, flags=re.UNICODE)
+        if len(stem) < 3:
+            continue
+        if stem[0].isupper():
+            candidates.append(stem)
+    candidates.sort(key=len, reverse=True)
+    seen = set()
+    unique = []
+    for c in candidates:
+        key = c.lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(c)
+    return unique
 
 
-def fetch_og_image(url):
-    """Bir makale sayfasina gidip og:image / twitter:image meta etiketini bulur.
-    RSS'te gorsel gelmeyen kaynaklar (cogunlukla Google News uzerinden gelenler)
-    icin gercek makale gorselini alma yolu. Bu, GitHub Actions uzerinde arka
-    planda calistigi icin (kullanici beklemedigi icin) yavasligi sorun degil --
-    sadece kullanicinin kendi bilgisayarinda calistirirken (webbrowser.open
-    oncesi) dikkatli olunmali, o yuzden sadece eksik gorseller icin calisir."""
+WIKIPEDIA_HEADERS = {
+    "User-Agent": "SakinAkis/1.0 (kisisel haber okuyucu scripti; "
+                  "https://github.com/olymei/sakin-akis)",
+    "Accept": "application/json",
+}
+
+
+def fetch_wikipedia_thumbnail(title, lang="tr"):
+    """Wikipedia'nin ucretsiz, anahtar gerektirmeyen ozet API'sinden bir
+    sayfanin kapak/tanitim gorselini ceker. Sayfa yoksa veya gorseli yoksa
+    None doner (hata firlatmaz)."""
     try:
-        req = urllib.request.Request(url, headers=HEADERS)
+        safe_title = urllib.parse.quote(title.replace(" ", "_"))
+        url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{safe_title}"
+        req = urllib.request.Request(url, headers=WIKIPEDIA_HEADERS)
         ctx = ssl.create_default_context()
-        with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
-            final_url = resp.geturl()
-            data = resp.read(80000).decode("utf-8", errors="ignore")
-        for pattern in OG_IMAGE_PATTERNS:
-            m = pattern.search(data)
-            if m:
-                return urllib.parse.urljoin(final_url, m.group(1))
+        with urllib.request.urlopen(req, timeout=6, context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return data.get("thumbnail", {}).get("source")
     except Exception:
-        pass
+        return None
+
+
+def fetch_entity_image(title):
+    """Basliktaki ozel isimlerden (en spesifik/uzun olandan baslayarak) ilk
+    basarili Wikipedia gorselini bulur. Once Turkce, sonra Ingilizce Wikipedia
+    denenir. Gercek makale fotografi degil ama ilgili ve gercek bir gorsel."""
+    for candidate in extract_entity_candidates(title)[:3]:
+        img = fetch_wikipedia_thumbnail(candidate, lang="tr")
+        if img:
+            return img
+        img = fetch_wikipedia_thumbnail(candidate, lang="en")
+        if img:
+            return img
     return None
+
+
+# Oyun kaynaklari sabit bir konuya (oyunun kendisine) karsilik geldigi icin,
+# her kaynak icin TEK BIR Wikipedia sorgusuyla (cache'lenerek) kapak gorseli
+# alinip o kaynagin tum haberlerinde kullanilabilir -- makale basina sorgu
+# gerekmez, cok daha hizli.
+GAME_WIKI_TITLES = {
+    "deadlock": "Deadlock (video game)",
+    "bodycam": "Bodycam (video game)",
+    "zomboid": "Project Zomboid",
+    "minecraft": "Minecraft",
+    "tft": "Teamfight Tactics",
+    "valorant": "Valorant",
+    "lol": "League of Legends",
+    "r6siege": "Rainbow Six Siege",
+    "cs2": "Counter-Strike 2",
+    "dota2": "Dota 2",
+}
 
 
 def make_placeholder_image(source_name, color):
@@ -1171,23 +1221,41 @@ def main():
     # Gorsel arama: yerelde (kullanicinin kendi bilgisayarinda, tarayicida
     # acilmayi bekledigi durumda) yavasligi onlemek icin atlanir, sadece
     # placeholder kullanilir. GitHub Actions'ta ise kullanici beklemedigi
-    # icin (arka planda calisiyor) gercek makale gorsellerini aramaya deger.
+    # icin (arka planda calisiyor) Wikipedia uzerinden ilgili gorselleri
+    # aramaya deger -- og:image kazima yontemi guvenilir calismadigi icin
+    # tamamen birakildi.
     if is_ci:
         missing = [it for it in all_items if not it.get("image")]
         if missing:
-            print(f"\nGörseli olmayan {len(missing)} haber için kaynak sayfasından görsel aranıyor...")
-            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-                future_to_item = {executor.submit(fetch_og_image, it["link"]): it for it in missing}
-                for future in concurrent.futures.as_completed(future_to_item):
-                    it = future_to_item[future]
-                    try:
-                        img = future.result()
-                        if img:
-                            it["image"] = img
-                    except Exception:
-                        pass
+            # Oyun kaynaklari: sabit konu, kaynak basina TEK sorgu (cache'lenir)
+            game_missing = [it for it in missing if it["sourceId"] in GAME_WIKI_TITLES]
+            other_missing = [it for it in missing if it["sourceId"] not in GAME_WIKI_TITLES]
+
+            if game_missing:
+                print(f"\n{len(set(it['sourceId'] for it in game_missing))} oyun kaynağı için Wikipedia kapak görseli aranıyor...")
+                game_image_cache = {}
+                for sid in set(it["sourceId"] for it in game_missing):
+                    game_image_cache[sid] = fetch_wikipedia_thumbnail(GAME_WIKI_TITLES[sid], lang="en")
+                for it in game_missing:
+                    img = game_image_cache.get(it["sourceId"])
+                    if img:
+                        it["image"] = img
+
+            if other_missing:
+                print(f"\nGörseli olmayan {len(other_missing)} haber için Wikipedia'da ilgili görsel aranıyor...")
+                with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                    future_to_item = {executor.submit(fetch_entity_image, it["title"]): it for it in other_missing}
+                    for future in concurrent.futures.as_completed(future_to_item):
+                        it = future_to_item[future]
+                        try:
+                            img = future.result()
+                            if img:
+                                it["image"] = img
+                        except Exception:
+                            pass
+
             found = sum(1 for it in missing if it.get("image"))
-            print(f"  {found}/{len(missing)} haber için gerçek görsel bulundu")
+            print(f"  {found}/{len(missing)} haber için görsel bulundu")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     clusters = cluster_items_for_summary(all_items)
