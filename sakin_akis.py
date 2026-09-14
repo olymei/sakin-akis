@@ -652,9 +652,9 @@ display:flex;flex-direction:column}}
 .overlay{{position:absolute;left:0;right:0;bottom:0;padding:34px 14px 12px;
 background:linear-gradient(to top, rgba(18,16,13,0.85) 0%, rgba(18,16,13,0.55) 50%, rgba(18,16,13,0) 100%)}}
 .overlay .item-meta{{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;
-font-size:11px;color:rgba(231,227,216,0.85);margin-bottom:5px}}
+font-size:12px;color:rgba(231,227,216,0.85);margin-bottom:6px}}
 .overlay .swatch{{width:9px;height:9px;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,0.35)}}
-.overlay h2{{font-size:18px;line-height:1.3;font-weight:600;margin:0;
+.overlay h2{{font-size:20px;line-height:1.32;font-weight:600;margin:0;
 text-shadow:0 1px 5px rgba(0,0,0,0.55)}}
 .overlay h2 a{{color:var(--paper);text-decoration:none}}
 .overlay h2 a:hover{{color:#fff}}
@@ -960,6 +960,10 @@ function relTime(dt, now, L){{
   return Math.round(hrs/24) + L.relDay;
 }}
 
+function absDate(dt, L){{
+  return `${{dt.getDate()}} ${{L.months[dt.getMonth()].slice(0,3)}}`;
+}}
+
 const TOPIC_SYNONYMS = {{
   "futbol": ["galatasaray","fenerbahçe","beşiktaş","trabzonspor","süper lig","transfer","gol","maç","uefa","şampiyonlar ligi","milli takım","futbolcu","football","soccer"],
   "spor": ["futbol","basketbol","voleybol","galatasaray","fenerbahçe","beşiktaş","milli takım","euroleague","sport"],
@@ -976,7 +980,7 @@ const TOPIC_SYNONYMS = {{
 
 const TOPIC_LABELS = {{
   tr: {{futbol:"Futbol", spor:"Spor", ekonomi:"Ekonomi", siyaset:"Siyaset", magazin:"Magazin", teknoloji:"Teknoloji",
-        patchnotes:"Patch Notes", digeroyun:"Diğer"}},
+        patchnotes:"Güncelleme Notları", digeroyun:"Diğer"}},
   en: {{futbol:"Football", spor:"Sports", ekonomi:"Economy", siyaset:"Politics", magazin:"Celebrity", teknoloji:"Tech",
         patchnotes:"Patch Notes", digeroyun:"Other"}}
 }};
@@ -1157,8 +1161,8 @@ function render(){{
     const eyeBtn = `<button class="eye-btn" title="${{isSeen ? L.markUnseen : L.markSeen}}">${{isSeen ? EYE_OFF_ICON : EYE_ICON}}</button>`;
 
     const metaHtml = isMulti
-      ? `<span class="coverage-badge">${{L.coverageBadge(cluster.length)}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span>`
-      : `<span class="swatch" style="background:${{newest.color}}"></span><span>${{newest.source}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span>`;
+      ? `<span class="coverage-badge">${{L.coverageBadge(cluster.length)}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`
+      : `<span class="swatch" style="background:${{newest.color}}"></span><span>${{newest.source}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`;
 
     const sourcesListHtml = isMulti
       ? `<div class="cluster-sources">` + cluster.map(m => `
