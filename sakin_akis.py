@@ -110,19 +110,32 @@ def find_image_in_html(text):
 
 
 def extract_entity_candidates(title):
-    """Basliktaki BUYUK HARFLE baslayan kelimeleri, orijinal harfleriyle
-    (Wikipedia sorgusu icin) cikarir; en uzun (muhtemelen en spesifik) aday
-    once denenir. extract_proper_nouns'a benzer ama kucuk harfe cevirmez."""
+    """Basliktaki BUYUK HARFLE baslayan kelimelerden Wikipedia adaylari
+    cikarir. Once ardisik iki kelimelik tam isim adaylarini dener (orn.
+    "Mansur Yavas") -- bunlar tek kelimeden cok daha isabetli eslesir.
+    Ilk kelimede kesme isareti (ek) varsa bir sonrakiyle birlestirmiyoruz,
+    cunku bu genelde farkli bir kisiye/varliga gecis anlamina gelir
+    ("Erdogan'dan Mansur Yavas'a" -> Erdogan ile Mansur ayri kisiler)."""
     raw_words = title.split()
-    candidates = []
+    parsed = []
     for w in raw_words:
-        stem = re.split(r"['\u2019]", w)[0]
-        stem = re.sub(r"[^\w]", "", stem, flags=re.UNICODE)
-        if len(stem) < 3:
-            continue
-        if stem[0].isupper():
-            candidates.append(stem)
-    candidates.sort(key=len, reverse=True)
+        parts = re.split(r"['\u2019]", w, maxsplit=1)
+        stem = re.sub(r"[^\w]", "", parts[0], flags=re.UNICODE)
+        has_suffix = len(parts) > 1
+        is_cap = len(stem) >= 3 and stem[0].isupper()
+        parsed.append((stem, has_suffix, is_cap))
+
+    candidates = []
+    for i in range(len(parsed) - 1):
+        stem1, suf1, cap1 = parsed[i]
+        stem2, suf2, cap2 = parsed[i + 1]
+        if cap1 and cap2 and not suf1:
+            candidates.append(f"{stem1} {stem2}")
+
+    singles = [stem for stem, suf, cap in parsed if cap]
+    singles.sort(key=len, reverse=True)
+    candidates.extend(singles)
+
     seen = set()
     unique = []
     for c in candidates:
@@ -139,6 +152,18 @@ WIKIPEDIA_HEADERS = {
     "Accept": "application/json",
 }
 
+# Wikipedia varsayilan olarak kucuk (~320px) bir onizleme gorseli dondurur;
+# bunu tam genislikte kartta gostermek bulaniklastirir. URL'deki genislik
+# degerini (orn. ".../320px-Isim.jpg") daha buyuk bir sayiyla degistirip
+# daha net bir versiyon istiyoruz.
+THUMBNAIL_TARGET_WIDTH = 800
+
+
+def upsize_thumbnail_url(url):
+    if not url:
+        return url
+    return re.sub(r"/(\d+)px-", f"/{THUMBNAIL_TARGET_WIDTH}px-", url)
+
 
 def fetch_wikipedia_thumbnail(title, lang="tr"):
     """Wikipedia'nin ucretsiz, anahtar gerektirmeyen ozet API'sinden bir
@@ -151,22 +176,52 @@ def fetch_wikipedia_thumbnail(title, lang="tr"):
         ctx = ssl.create_default_context()
         with urllib.request.urlopen(req, timeout=6, context=ctx) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        return data.get("thumbnail", {}).get("source")
+        thumb = data.get("thumbnail", {}).get("source")
+        return upsize_thumbnail_url(thumb)
+    except Exception:
+        return None
+
+
+def wikipedia_search_title(query, lang="tr"):
+    """Tam baslik eslesmesi basarisiz olursa (orn. 'Merkez Bankasi' gibi
+    kisaltilmis/kismi bir isim), Wikipedia'nin arama API'siyle en yakin
+    gercek sayfa basligini bulur (bulanik eslesme)."""
+    try:
+        url = (
+            f"https://{lang}.wikipedia.org/w/api.php?action=opensearch"
+            f"&search={urllib.parse.quote(query)}&limit=1&namespace=0&format=json"
+        )
+        req = urllib.request.Request(url, headers=WIKIPEDIA_HEADERS)
+        ctx = ssl.create_default_context()
+        with urllib.request.urlopen(req, timeout=6, context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        titles = data[1] if len(data) > 1 else []
+        return titles[0] if titles else None
     except Exception:
         return None
 
 
 def fetch_entity_image(title):
-    """Basliktaki ozel isimlerden (en spesifik/uzun olandan baslayarak) ilk
-    basarili Wikipedia gorselini bulur. Once Turkce, sonra Ingilizce Wikipedia
-    denenir. Gercek makale fotografi degil ama ilgili ve gercek bir gorsel."""
-    for candidate in extract_entity_candidates(title)[:3]:
-        img = fetch_wikipedia_thumbnail(candidate, lang="tr")
-        if img:
-            return img
-        img = fetch_wikipedia_thumbnail(candidate, lang="en")
-        if img:
-            return img
+    """Basliktaki ozel isim adaylarindan (once iki kelimelik tam isimler,
+    sonra tekiller) ilk basarili Wikipedia gorselini bulur. Once Turkce,
+    sonra Ingilizce Wikipedia denenir. Tam baslik eslesmesi basarisiz
+    olursa, en iyi aday icin arama API'si ile bulanik eslesme denenir.
+    Gercek makale fotografi degil ama ilgili ve gercek bir gorsel."""
+    candidates = extract_entity_candidates(title)[:3]
+    for candidate in candidates:
+        for lang in ("tr", "en"):
+            img = fetch_wikipedia_thumbnail(candidate, lang=lang)
+            if img:
+                return img
+
+    if candidates:
+        best = candidates[0]
+        for lang in ("tr", "en"):
+            found_title = wikipedia_search_title(best, lang=lang)
+            if found_title:
+                img = fetch_wikipedia_thumbnail(found_title, lang=lang)
+                if img:
+                    return img
     return None
 
 
@@ -191,15 +246,16 @@ GAME_WIKI_TITLES = {
 def make_placeholder_image(source_name, color):
     """RSS'te gorsel gelmeyen (cogunlukla Google News uzerinden gelen) haberler
     icin aninda, network'e gitmeden bir monogram gorseli uretir: kaynagin
-    rengiyle boyali bir kare + adin ilk harfi. Yavas/guvenilmez sayfa
-    kazima yontemine (her makaleyi tek tek acmaya calismak) alternatif."""
+    rengiyle boyali bir zemin + adin ilk harfi. Kartin kendi oranina (2.2:1)
+    esit bir viewBox kullanilir ki object-fit:cover kirpma yapmasin; harf
+    ustte/soluk tutulur cunku kartin alt kismi baslik yazisi icin ayrilmis."""
     letter = (source_name.strip()[0].upper() if source_name.strip() else "?")
     letter = letter.replace("&", "&amp;").replace("<", "&lt;")
     svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 92 92">'
-        f'<rect width="92" height="92" fill="{color}"/>'
-        f'<text x="46" y="50" font-family="Georgia, serif" font-size="38" '
-        f'font-weight="600" fill="#E7E3D8" text-anchor="middle" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 100">'
+        f'<rect width="220" height="100" fill="{color}"/>'
+        f'<text x="110" y="40" font-family="Georgia, serif" font-size="34" '
+        f'font-weight="600" fill="#E7E3D8" fill-opacity="0.55" text-anchor="middle" '
         f'dominant-baseline="middle">{letter}</text>'
         f'</svg>'
     )
@@ -585,19 +641,25 @@ border-left:none;border-right:none}}
 margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}}
 .item{{padding:0 0 22px;margin-bottom:22px;border-bottom:1px solid var(--rule);
 display:flex;flex-direction:column}}
-.item-body{{flex:1;min-width:0}}
-.item-meta{{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;
-font-size:11px;color:var(--ink-soft);margin-bottom:6px}}
-.swatch{{width:9px;height:9px;flex-shrink:0}}
-.item h2{{font-size:19px;line-height:1.35;font-weight:600;margin:0}}
-.item a{{color:var(--ink);text-decoration:none}} .item a:hover{{color:var(--accent)}}
 .item.seen{{opacity:0.5}}
+.media{{position:relative;width:100%}}
+.thumb{{width:100%;aspect-ratio:2.2/1;object-fit:cover;background:var(--rule);display:block}}
+.overlay{{position:absolute;left:0;right:0;bottom:0;padding:34px 14px 12px;
+background:linear-gradient(to top, rgba(18,16,13,0.85) 0%, rgba(18,16,13,0.55) 50%, rgba(18,16,13,0) 100%)}}
+.overlay .item-meta{{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;
+font-size:11px;color:rgba(231,227,216,0.85);margin-bottom:5px}}
+.overlay .swatch{{width:9px;height:9px;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,0.35)}}
+.overlay h2{{font-size:18px;line-height:1.3;font-weight:600;margin:0;
+text-shadow:0 1px 5px rgba(0,0,0,0.55)}}
+.overlay h2 a{{color:var(--paper);text-decoration:none}}
+.overlay h2 a:hover{{color:#fff}}
+.overlay .eye-btn{{color:rgba(231,227,216,0.85)}}
+.overlay .eye-btn:hover{{color:#fff}}
+.swatch{{width:9px;height:9px;flex-shrink:0}}
 .eye-btn{{background:none;border:none;padding:0;margin:0;cursor:pointer;
 color:var(--ink-soft);display:inline-flex;align-items:center;line-height:0}}
 .eye-btn:hover{{color:var(--accent)}}
 .eye-btn svg{{width:14px;height:14px}}
-.thumb{{width:100%;aspect-ratio:2.2/1;object-fit:cover;background:var(--rule);
-margin-bottom:14px;display:block}}
 .empty{{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);
 padding:40px 0;text-align:center}}
 footer{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);
@@ -842,6 +904,7 @@ function buildTabs(){{
       currentTab = id;
       currentPage = 1;
       try {{ localStorage.setItem('sakinakis_tab', currentTab); }} catch(e) {{}}
+      loadFilterInputsForTab();
       render();
     }});
     el.appendChild(btn);
@@ -917,6 +980,18 @@ const TOPIC_KEYS_BY_TAB = {{
   oyun: ["guncelleme","turnuva","yeniicerik","indirim"]
 }};
 
+function hideStorageKey(){{ return 'sakinakis_hide_' + currentTab; }}
+function onlyStorageKey(){{ return 'sakinakis_only_' + currentTab; }}
+function importantStorageKey(){{ return 'sakinakis_important_' + currentTab; }}
+
+function loadFilterInputsForTab(){{
+  try {{
+    hideInputEl.value = localStorage.getItem(hideStorageKey()) || '';
+    onlyInputEl.value = localStorage.getItem(onlyStorageKey()) || '';
+    importantInputEl.value = localStorage.getItem(importantStorageKey()) || '';
+  }} catch(e) {{ /* localStorage yoksa sessizce devam */ }}
+}}
+
 function getWordsArray(inputEl){{
   return inputEl.value.split(',').map(w => w.trim()).filter(w => w.length > 0);
 }}
@@ -987,9 +1062,9 @@ function render(){{
   sortBtn.classList.toggle('active', sortMode === 'importance');
 
   buildTabs();
-  buildTopicChips('hideTopicChips', hideInputEl, 'sakinakis_hide');
-  buildTopicChips('onlyTopicChips', onlyInputEl, 'sakinakis_only');
-  buildTopicChips('importantTopicChips', importantInputEl, 'sakinakis_important');
+  buildTopicChips('hideTopicChips', hideInputEl, hideStorageKey());
+  buildTopicChips('onlyTopicChips', onlyInputEl, onlyStorageKey());
+  buildTopicChips('importantTopicChips', importantInputEl, importantStorageKey());
   buildSourceToggles();
 
   const hideRaw = parseWords(document.getElementById('hideInput').value);
@@ -1090,15 +1165,17 @@ function render(){{
 
     html += `
       <div class="item${{isSeen ? ' seen' : ''}}">
-        ${{thumb}}
-        <div class="item-body">
-          <div class="item-meta">
-            ${{metaHtml}}
-            <span>&middot;</span>${{eyeBtn}}
+        <div class="media">
+          ${{thumb}}
+          <div class="overlay">
+            <div class="item-meta">
+              ${{metaHtml}}
+              <span>&middot;</span>${{eyeBtn}}
+            </div>
+            <h2><a href="${{headlineLink.link}}" target="_blank" rel="noopener">${{headlineText}}</a></h2>
           </div>
-          <h2><a href="${{headlineLink.link}}" target="_blank" rel="noopener">${{headlineText}}</a></h2>
-          ${{sourcesListHtml}}
         </div>
+        ${{sourcesListHtml}}
       </div>`;
   }});
   feed.innerHTML = html;
@@ -1163,13 +1240,13 @@ const importantInputEl = document.getElementById('importantInput');
 
 try {{
   lang = localStorage.getItem('sakinakis_lang') || 'tr';
-  hideInputEl.value = localStorage.getItem('sakinakis_hide') || '';
-  onlyInputEl.value = localStorage.getItem('sakinakis_only') || '';
-  importantInputEl.value = localStorage.getItem('sakinakis_important') || '';
+  currentTab = localStorage.getItem('sakinakis_tab') || 'haber';
+  hideInputEl.value = localStorage.getItem(hideStorageKey()) || '';
+  onlyInputEl.value = localStorage.getItem(onlyStorageKey()) || '';
+  importantInputEl.value = localStorage.getItem(importantStorageKey()) || '';
   const savedSources = localStorage.getItem('sakinakis_sources');
   if (savedSources) activeSources = new Set(JSON.parse(savedSources));
   sortMode = localStorage.getItem('sakinakis_sortmode') || 'chrono';
-  currentTab = localStorage.getItem('sakinakis_tab') || 'haber';
   const savedSeen = localStorage.getItem('sakinakis_seen');
   if (savedSeen) seenLinks = new Set(JSON.parse(savedSeen));
 }} catch(e) {{ /* localStorage yoksa sessizce devam */ }}
@@ -1186,9 +1263,9 @@ function onFilterInput(){{
   clearTimeout(filterDebounce);
   filterDebounce = setTimeout(() => {{
     try {{
-      localStorage.setItem('sakinakis_hide', hideInputEl.value);
-      localStorage.setItem('sakinakis_only', onlyInputEl.value);
-      localStorage.setItem('sakinakis_important', importantInputEl.value);
+      localStorage.setItem(hideStorageKey(), hideInputEl.value);
+      localStorage.setItem(onlyStorageKey(), onlyInputEl.value);
+      localStorage.setItem(importantStorageKey(), importantInputEl.value);
     }} catch(e) {{ /* yoksay */ }}
     currentPage = 1;
     render();
