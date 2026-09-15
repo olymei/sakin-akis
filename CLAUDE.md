@@ -47,15 +47,16 @@ alanları var. Eskiden bir de `color` (hex, marka rengi) alanı vardı -- kaynak
 toggle'larındaki, kart üstündeki ve kümedeki swatch noktalarında kullanılıyordu; kullanıcı
 "gerek yok" deyip kaldırttı, aynı anda site tamamen siyah-beyaza geçti (bkz. "Tema").
 
-**Haberler (22):** Reuters, AP, BBC (EN), BBC Türkçe, Cumhuriyet, Bianet, TRT Haber,
+**Haberler (23):** Reuters, AP, BBC (EN), BBC Türkçe, Cumhuriyet, Bianet, TRT Haber,
 Anadolu Ajansı, Sözcü, Habertürk, NTV, Hürriyet, Sabah, Halk TV, T24, DW Türkçe,
-Al Jazeera English, The Guardian, Euronews, NPR, CNN Türk, Yeni Şafak — bilinçli olarak
-siyasi yelpazede dengeli (devlet: TRT/AA; pro-hükümet: Sabah/Habertürk/Yeni Şafak/CNN Türk;
-muhalefet: Sözcü/Cumhuriyet/Halk TV; bağımsız: Bianet/T24/Hürriyet; uluslararası:
-Reuters/AP/BBC/Al Jazeera/Guardian/Euronews/NPR/DW), kullanıcı açıkça bunu istedi. 9'dan
-22'ye genişletildi -- kullanıcı "büyük kaynakların hepsi olsun" dedi, TR + İngilizce/
-uluslararası karışımı özellikle istendi. 22'de durulması bilinçli bir sınır: daha fazlası
-kaynak listesinin kendisini gürültüye çevirir (kullanıcı da bunu onayladı).
+Al Jazeera English, The Guardian, Euronews, NPR, CNN Türk, Yeni Şafak, The Economist —
+bilinçli olarak siyasi yelpazede dengeli (devlet: TRT/AA; pro-hükümet: Sabah/Habertürk/
+Yeni Şafak/CNN Türk; muhalefet: Sözcü/Cumhuriyet/Halk TV; bağımsız: Bianet/T24/Hürriyet;
+uluslararası: Reuters/AP/BBC/Al Jazeera/Guardian/Euronews/NPR/DW/Economist), kullanıcı
+açıkça bunu istedi. 9'dan 22'ye genişletildi -- kullanıcı "büyük kaynakların hepsi olsun"
+dedi, TR + İngilizce/uluslararası karışımı özellikle istendi. Sonra The Economist tek
+başına eklendi (kullanıcı "bu son olsun" dedi -- 23'te durulacak, bilinçli bir sınır:
+daha fazlası kaynak listesinin kendisini gürültüye çevirir).
 
 **Oyunlar (11):** Deadlock, Bodycam, Project Zomboid, Minecraft, TFT, Valorant,
 League of Legends, Rainbow Six Siege, Counter-Strike 2, Dota 2, Büyük Oyun Haberleri (genel)
@@ -208,10 +209,10 @@ sadece iki başlık altında sıralanıyor (tek tek acma/kapama kontrolü korunu
 kaynağın Python tarafında `SOURCES` içinde `"lang": "tr"` veya `"lang": "en"` alanı var
 (`sources_meta` ile JS'e geçiyor); `buildSourceToggles` bu alana göre iki grup render
 ediyor (CSS: `.sources-subgroup-label{{flex-basis:100%}}` ile ayni flex-wrap konteyner
-icinde satir kaydiriyor, ekstra wrapper div yok). 22 kaynaktan 15'i Türkçe (BBC Türkçe ve
+icinde satir kaydiriyor, ekstra wrapper div yok). 23 kaynaktan 15'i Türkçe (BBC Türkçe ve
 DW Türkçe dahil -- bunlar yabancı kuruluşların Türkçe yayını ama dil/hedef kitleye göre
-Türkçe grubuna kondu), 7'si yabancı (Reuters, AP, BBC EN, Al Jazeera English, Guardian,
-Euronews, NPR).
+Türkçe grubuna kondu), 8'i yabancı (Reuters, AP, BBC EN, Al Jazeera English, Guardian,
+Euronews, NPR, The Economist).
 
 **Konu chip'leri (`TOPIC_SYNONYMS`, `TOPIC_KEYS_BY_TAB`):** Sekmeye göre farklı chip seti.
 - Haberler: Futbol, Spor, Ekonomi, Siyaset, Magazin, Teknoloji

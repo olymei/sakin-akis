@@ -73,6 +73,8 @@ SOURCES = [
      "rss": "https://www.cnnturk.com/feed/rss/turkiye/news"},
     {"id": "yenisafak", "name": "Yeni Şafak", "category": "haber", "lang": "tr",
      "rss": "https://www.yenisafak.com/rss?xml=gundem"},
+    {"id": "economist", "name": "The Economist", "category": "haber", "lang": "en",
+     "rss": "https://www.economist.com/international/rss.xml"},
     {"id": "deadlock", "name": "Deadlock", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/1422450/?cc=us&l=english"},
     {"id": "bodycam", "name": "Bodycam", "category": "oyun",
