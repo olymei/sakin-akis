@@ -973,11 +973,48 @@ function buildTabs(){{
   }});
 }}
 
+// Oyunlar sekmesinde 11 ayri kaynak yerine 3 grup gosterilir -- kullanici
+// tek tek oyun degil, "nereden" (Riot / Steam / digeri) diye dusunuyor.
+// Grup butonuna tiklamak, o gruptaki TUM sourceId'leri birlikte ac/kapat.
+const OYUN_SOURCE_GROUPS = [
+  {{ id: 'riot', label: 'Riot Games', color: '#D32936', sourceIds: ['valorant', 'lol', 'tft'] }},
+  {{ id: 'steam', label: 'Steam', color: '#66C0F4', sourceIds: ['deadlock', 'bodycam', 'zomboid', 'r6siege', 'cs2', 'dota2'] }},
+  {{ id: 'other', label: 'Diğer', color: '#8A8570', sourceIds: ['minecraft', 'game_news'] }},
+];
+
 function buildSourceToggles(){{
   const L = I18N[lang];
   const wrapEl = document.getElementById('sourcesLabel');
   const el = document.getElementById('sourceToggles');
   wrapEl.style.display = '';
+
+  if (currentTab === 'oyun'){{
+    const activeGroupCount = OYUN_SOURCE_GROUPS.filter(g => g.sourceIds.every(id => activeSources.has(id))).length;
+    wrapEl.innerHTML = `<span class="chevron">&#9656;</span><span>${{L.sourcesLabel}} (${{activeGroupCount}}/${{OYUN_SOURCE_GROUPS.length}})</span>`;
+    wrapEl.classList.toggle('expanded', sourcesExpanded);
+    wrapEl.onclick = () => {{
+      sourcesExpanded = !sourcesExpanded;
+      render();
+    }};
+    el.style.display = sourcesExpanded ? '' : 'none';
+    el.innerHTML = '';
+    OYUN_SOURCE_GROUPS.forEach(g => {{
+      const allActive = g.sourceIds.every(id => activeSources.has(id));
+      const btn = document.createElement('button');
+      btn.className = 'src-toggle' + (allActive ? ' active' : '');
+      btn.innerHTML = `<span class="swatch" style="background:${{g.color}}"></span><span>${{g.label}}</span>`;
+      btn.addEventListener('click', () => {{
+        if (allActive) g.sourceIds.forEach(id => activeSources.delete(id));
+        else g.sourceIds.forEach(id => activeSources.add(id));
+        currentPage = 1;
+        try {{ localStorage.setItem('sakinakis_sources', JSON.stringify([...activeSources])); }} catch(e) {{}}
+        render();
+      }});
+      el.appendChild(btn);
+    }});
+    return;
+  }}
+
   const tabSources = SOURCES_META.filter(s => s.category === currentTab);
   const activeCount = tabSources.filter(s => activeSources.has(s.id)).length;
   wrapEl.innerHTML = `<span class="chevron">&#9656;</span><span>${{L.sourcesLabel}} (${{activeCount}}/${{tabSources.length}})</span>`;
@@ -988,7 +1025,7 @@ function buildSourceToggles(){{
   }};
   el.style.display = sourcesExpanded ? '' : 'none';
   el.innerHTML = '';
-  SOURCES_META.filter(s => s.category === currentTab).forEach(s => {{
+  tabSources.forEach(s => {{
     const btn = document.createElement('button');
     btn.className = 'src-toggle' + (activeSources.has(s.id) ? ' active' : '');
     btn.innerHTML = `<span class="swatch" style="background:${{s.color}}"></span><span>${{s.name}}</span>`;

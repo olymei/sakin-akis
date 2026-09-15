@@ -166,12 +166,17 @@ canvas okuma çalışmaz.
 sekmeye göre dinamik key üreten `hideStorageKey()` fonksiyonlarına bak). Bunu SEKME
 BAĞIMSIZ tutmayı unutma, bir önceki hata buydu (kutular paylaşılıyordu).
 
-**Oyunlar sekmesinde de kaynak toggle'ı VAR** (Haberler ile aynı mekanizma,
-`buildSourceToggles` her iki sekmede de çalışır). Başta kaldırılmıştı ("kategoriler
-kaldırılsın, hepsi gösterilsin") ama Riot Games sorguları patch notes'a daraltılınca
-(bkz. yukarısı) bu kaynaklar 879 oyun haberi içinde ~23 taneye düşüp kayboldu -- kullanıcı
-bunları bulabilmek için toggle'ı geri istedi. Varsayılan KAPALI (genişlet düğmesiyle
-açılıyor, `sourcesExpanded` state), her iki sekmede ortak.
+**Oyunlar sekmesinde de kaynak toggle'ı VAR ama Haberler'den FARKLI** -- 11 ayrı oyun
+yerine 3 GRUP butonu (`OYUN_SOURCE_GROUPS`): "Riot Games" (valorant/lol/tft), "Steam"
+(deadlock/bodycam/zomboid/r6siege/cs2/dota2), "Diğer" (minecraft/game_news). Bir gruba
+tıklamak o gruptaki TÜM sourceId'leri birlikte `activeSources`'a ekler/çıkarır -- alttaki
+filtre mekanizması (`activeSources.has(it.sourceId)`) Haberler ile birebir aynı, sadece
+Oyunlar'da UI'da gruplu gösteriliyor. Başta (tek tek kaynaklar da dahil) tamamen
+kaldırılmıştı ("kategoriler kaldırılsın, hepsi gösterilsin"), sonra Riot Games sorguları
+patch notes'a daraltılınca (bkz. yukarısı) bu kaynaklar 879 oyun haberi içinde ~23 taneye
+düşüp kayboldu -- kullanıcı önce Haberler'deki gibi tek tek kaynak listesi istedi, sonra
+11 buton fazla geldi, 3 gruba indirgendi. Varsayılan KAPALI (genişlet düğmesiyle açılıyor,
+`sourcesExpanded` state, her iki sekmede ortak).
 
 **Konu chip'leri (`TOPIC_SYNONYMS`, `TOPIC_KEYS_BY_TAB`):** Sekmeye göre farklı chip seti.
 - Haberler: Futbol, Spor, Ekonomi, Siyaset, Magazin, Teknoloji
