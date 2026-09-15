@@ -191,10 +191,24 @@ DOĞRUDAN kullanmak (tam çözünürlük, hiç URL numarası oynamaya gerek yok)
 
 Görsel üstte (2.2:1), altında koyu gradient + başlık overlay (sol alt). Görselin alt %45'inin
 ortalama parlaklığı canvas ile ölçülüp (`sampleImageBrightness`) 165 eşiğine göre metin
-rengi otomatik siyah/beyaz seçiliyor (`.overlay.on-light` class'ı). CORS engellenirse
-(nadir, Wikipedia genelde izin verir) sessizce varsayılana (koyu zemin varsayımı, açık
-metin) düşülür — `crossorigin="anonymous"` attribute'u img tag'inde var, bu olmadan
-canvas okuma çalışmaz.
+rengi otomatik siyah/beyaz seçiliyor (`.overlay.on-light` class'ı).
+
+⚠️ **`crossorigin="anonymous"` GÖRÜNEN `<img class="thumb">` üzerinde OLMAMALI.** Önceki
+hali görünen img'e `crossorigin="anonymous"` koyuyordu (canvas okuma için gerekli sanılmıştı)
++ `onerror="this.remove();"`. Bu, CORS header'ı göndermeyen HERHANGİ bir sunucudan (CNN
+Türk'ün CDN'i böyle çıktı, canlıda bulundu -- kullanıcı "site bozuk" diye bildirdi) gelen
+görseli TAMAMEN reddetmesine sebep oluyordu (crossorigin=anonymous, sadece canvas okumayı
+değil, tarayıcının görseli hiç göstermesini de CORS'a bağlıyor). `onerror` görseli DOM'dan
+siliyordu, `.media` div'inin tek normal-flow içeriği o img olduğu için yükseklik 0'a
+düşüyordu, kart çöküyordu -- 25 karttan 15'i bu şekilde bozulmuştu.
+
+**Düzeltme:** Görünen img artık `crossorigin` TAŞIMIYOR (her zaman normal `<img>` gibi
+yükleniyor, CORS header'ı olsun olmasın). Parlaklık ölçümü için `applyOverlayContrast`
+içinde AYRI, DOM'a hiç eklenmeyen bir "probe" `Image()` oluşturuluyor -- SADECE bu probe
+`crossOrigin='anonymous'` taşıyor. Probe CORS'a takılırsa (nadir, Wikipedia genelde izin
+verir) sessizce varsayılana (koyu zemin varsayımı, açık metin) düşülüyor ama görünen görseli
+hiç etkilemiyor. Yeni bir görsel-ilişkili degisiklik yaparken görünen `<img>`'e ASLA
+`crossorigin` ekleme.
 
 ## Sekmeler ve state yönetimi
 

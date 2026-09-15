@@ -1142,14 +1142,25 @@ function sampleImageBrightness(img, callback){{
 }}
 
 function applyOverlayContrast(imgEl, overlayEl){{
+  // Gorunen <img> artik crossorigin="anonymous" TASIMIYOR -- boylece CORS
+  // header'i olmayan sunuculardan (orn. CNN Turk CDN'i) gelen gorseller de
+  // normal sekilde yuklenir. Parlaklik olcumu icin ayri, gorunmez bir "probe"
+  // Image() olusturuyoruz; SADECE bu probe crossOrigin='anonymous' kullaniyor.
+  // Probe CORS'a takilirsa (onerror) sessizce varsayilan (koyu zemin) stile
+  // duesuyor -- gorunen gorseli hic etkilemiyor.
   function analyze(){{
-    sampleImageBrightness(imgEl, (brightness) => {{
-      if (brightness !== null && brightness > 165){{
-        overlayEl.classList.add('on-light');
-      }} else {{
-        overlayEl.classList.remove('on-light');
-      }}
-    }});
+    const probe = new Image();
+    probe.crossOrigin = 'anonymous';
+    probe.onload = () => {{
+      sampleImageBrightness(probe, (brightness) => {{
+        if (brightness !== null && brightness > 165){{
+          overlayEl.classList.add('on-light');
+        }} else {{
+          overlayEl.classList.remove('on-light');
+        }}
+      }});
+    }};
+    probe.src = imgEl.src;
   }}
   if (imgEl.complete && imgEl.naturalWidth > 0){{
     analyze();
@@ -1347,7 +1358,7 @@ function render(){{
     const headlineText = aiSummaryItem ? aiSummaryItem.aiSummary : shortest.title;
 
     const thumb = newest.image
-      ? `<img class="thumb" src="${{newest.image}}" alt="" loading="lazy" crossorigin="anonymous" onerror="this.remove();">`
+      ? `<img class="thumb" src="${{newest.image}}" alt="" loading="lazy" onerror="this.remove();">`
       : '';
     const eyeBtn = `<button class="eye-btn" title="${{isSeen ? L.markUnseen : L.markSeen}}">${{isSeen ? EYE_OFF_ICON : EYE_ICON}}</button>`;
 
