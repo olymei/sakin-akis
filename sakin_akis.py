@@ -267,6 +267,13 @@ GAME_WIKI_TITLES = {
     "dota2": "Dota 2",
 }
 
+# TFT'nin Wikipedia sayfasinda infobox gorseli yok (API None donuyor,
+# dogrulandi), bu yuzden o tek kaynak icin Wikimedia Commons'taki resmi
+# logo dosyasina dogrudan sabit bir yedek veriyoruz.
+GAME_FALLBACK_IMAGES = {
+    "tft": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Teamfight_Tactics_logo.png",
+}
+
 
 def make_placeholder_image(source_name, color):
     """RSS'te gorsel gelmeyen (cogunlukla Google News uzerinden gelen) haberler
@@ -1451,7 +1458,8 @@ def main():
                 print(f"\n{len(set(it['sourceId'] for it in game_missing))} oyun kaynağı için Wikipedia kapak görseli aranıyor...")
                 game_image_cache = {}
                 for sid in set(it["sourceId"] for it in game_missing):
-                    game_image_cache[sid] = fetch_wikipedia_thumbnail(GAME_WIKI_TITLES[sid], lang="en")
+                    img = fetch_wikipedia_thumbnail(GAME_WIKI_TITLES[sid], lang="en")
+                    game_image_cache[sid] = img or GAME_FALLBACK_IMAGES.get(sid)
                 for it in game_missing:
                     img = game_image_cache.get(it["sourceId"])
                     if img:
