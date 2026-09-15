@@ -578,17 +578,19 @@ def build_html(all_items):
 <title>Sakin Akış</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
-:root{{--paper:#E7E3D8;--ink:#22252A;--ink-soft:#5B5D57;--rule:#C9C3B2;--accent:#A6432D;}}
+:root{{--paper:#1B1A17;--paper-raised:#29271F;--ink:#E7E3D8;--ink-soft:#9C9686;--rule:#3A372E;--accent:#C1573D;}}
+html.light{{--paper:#E7E3D8;--paper-raised:#DFDACC;--ink:#22252A;--ink-soft:#5B5D57;--rule:#C9C3B2;--accent:#A6432D;}}
 *{{box-sizing:border-box}} body{{margin:0;background:var(--paper);color:var(--ink);
-font-family:'Source Serif 4',Georgia,serif;position:relative}}
+font-family:'Source Serif 4',Georgia,serif;position:relative;transition:background 0.15s ease,color 0.15s ease}}
 .wrap{{max-width:640px;margin:0 auto;padding:32px 20px 80px}}
 h1{{font-size:28px;font-weight:700;margin:0 0 4px;letter-spacing:-0.01em}}
 .sub{{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-soft);margin:0}}
 header{{border-bottom:1px solid var(--rule);padding-bottom:18px;margin-bottom:6px;position:relative}}
-.lang-toggle{{position:fixed;top:18px;right:18px;font-family:'IBM Plex Mono',monospace;
+.top-toggles{{position:fixed;top:18px;right:18px;display:flex;gap:8px;z-index:10}}
+.theme-toggle,.lang-toggle{{font-family:'IBM Plex Mono',monospace;
 font-size:12px;background:var(--paper);border:1px solid var(--ink);color:var(--ink);
-padding:6px 12px;cursor:pointer;z-index:10}}
-.lang-toggle:hover{{background:var(--ink);color:var(--paper)}}
+padding:6px 12px;cursor:pointer}}
+.theme-toggle:hover,.lang-toggle:hover{{background:var(--ink);color:var(--paper)}}
 .tabs{{display:flex;gap:0;margin:20px 0 4px;border-bottom:1px solid var(--rule)}}
 .tab-btn{{font-family:'IBM Plex Mono',monospace;font-size:13px;background:none;border:none;
 color:var(--ink-soft);padding:8px 4px;margin-right:22px;cursor:pointer;
@@ -599,7 +601,7 @@ border-bottom:2px solid transparent;position:relative;top:1px}}
 .filter-field label{{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
 color:var(--ink-soft);margin-bottom:4px}}
 .filter-field input{{width:100%;font-family:'IBM Plex Mono',monospace;font-size:12.5px;
-color:var(--ink);background:var(--paper-raised,#DFDACC);border:1px solid var(--rule);
+color:var(--ink);background:var(--paper-raised);border:1px solid var(--rule);
 padding:8px 10px}}
 .filter-field input:focus{{outline:none;border-color:var(--ink)}}
 .topic-chips{{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}}
@@ -634,7 +636,11 @@ margin:4px 0 6px}}
 .filter-hint{{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-soft);
 margin:0 0 18px;font-style:italic}}
 .sources-label{{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-soft);
-margin:18px 0 8px}}
+margin:18px 0 8px;background:none;border:none;padding:0;cursor:pointer;
+display:flex;align-items:center;gap:5px}}
+.sources-label:hover{{color:var(--ink)}}
+.sources-label .chevron{{display:inline-block;transition:transform 0.15s ease;font-size:9px}}
+.sources-label.expanded .chevron{{transform:rotate(90deg)}}
 .sources{{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:6px}}
 .src-toggle{{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;
 font-size:12.5px;cursor:pointer;user-select:none;padding:3px 0;
@@ -670,11 +676,14 @@ padding:40px 0;text-align:center}}
 footer{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);
 margin-top:40px;padding-top:16px;border-top:1px solid var(--rule)}}
 </style></head><body>
-<button class="lang-toggle" id="langToggle">EN</button>
+<div class="top-toggles">
+  <button class="theme-toggle" id="themeToggle">☀</button>
+  <button class="lang-toggle" id="langToggle">EN</button>
+</div>
 <div class="wrap">
 <header><h1 id="pageTitle">Sakin Akış</h1><p class="sub" id="pageSub">algoritma yok &middot; reklam yok &middot; kronolojik sıra</p></header>
 <div class="tabs" id="mainTabs"></div>
-<div class="sources-label" id="sourcesLabel">kaynaklar</div>
+<button class="sources-label" id="sourcesLabel">kaynaklar</button>
 <div class="sources" id="sourceToggles"></div>
 <div class="filters">
   <div class="filter-field">
@@ -887,12 +896,14 @@ const I18N = {{
 }};
 
 let lang = "tr";
+let theme = "dark";
 let activeSources = new Set(SOURCES_META.map(s => s.id));
 let sortMode = "chrono";
 let currentTab = "haber";
 let seenLinks = new Set();
 let currentPage = 1;
 const PAGE_SIZE = 25;
+let sourcesExpanded = false;
 
 const EYE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
 const EYE_OFF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.66 18.66 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
@@ -917,6 +928,7 @@ function buildTabs(){{
 }}
 
 function buildSourceToggles(){{
+  const L = I18N[lang];
   const wrapEl = document.getElementById('sourcesLabel');
   const el = document.getElementById('sourceToggles');
   // Oyunlar sekmesinde tek tek kaynak secimi yok -- hepsi dogrudan gosterilir
@@ -927,7 +939,15 @@ function buildSourceToggles(){{
     return;
   }}
   wrapEl.style.display = '';
-  el.style.display = '';
+  const tabSources = SOURCES_META.filter(s => s.category === currentTab);
+  const activeCount = tabSources.filter(s => activeSources.has(s.id)).length;
+  wrapEl.innerHTML = `<span class="chevron">&#9656;</span><span>${{L.sourcesLabel}} (${{activeCount}}/${{tabSources.length}})</span>`;
+  wrapEl.classList.toggle('expanded', sourcesExpanded);
+  wrapEl.onclick = () => {{
+    sourcesExpanded = !sourcesExpanded;
+    render();
+  }};
+  el.style.display = sourcesExpanded ? '' : 'none';
   el.innerHTML = '';
   SOURCES_META.filter(s => s.category === currentTab).forEach(s => {{
     const btn = document.createElement('button');
@@ -1058,12 +1078,13 @@ function render(){{
   document.getElementById('pageTitle').textContent = L.title;
   document.getElementById('pageSub').textContent = L.sub;
   document.getElementById('langToggle').textContent = L.toggleLabel;
+  document.documentElement.classList.toggle('light', theme === 'light');
+  document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀' : '☾';
   document.getElementById('pageFooter').textContent = L.footer(GENERATED);
   document.getElementById('hideLabel').textContent = L.hideLabel;
   document.getElementById('onlyLabel').textContent = L.onlyLabel;
   document.getElementById('hideInput').placeholder = L.hidePlaceholder;
   document.getElementById('onlyInput').placeholder = L.onlyPlaceholder;
-  document.getElementById('sourcesLabel').textContent = L.sourcesLabel;
   document.getElementById('importantLabel').textContent = L.importantLabel;
   document.getElementById('importantInput').placeholder = L.importantPlaceholder;
 
@@ -1244,12 +1265,19 @@ document.getElementById('langToggle').addEventListener('click', () => {{
   render();
 }});
 
+document.getElementById('themeToggle').addEventListener('click', () => {{
+  theme = theme === 'dark' ? 'light' : 'dark';
+  try {{ localStorage.setItem('sakinakis_theme', theme); }} catch(e) {{}}
+  render();
+}});
+
 const hideInputEl = document.getElementById('hideInput');
 const onlyInputEl = document.getElementById('onlyInput');
 const importantInputEl = document.getElementById('importantInput');
 
 try {{
   lang = localStorage.getItem('sakinakis_lang') || 'tr';
+  theme = localStorage.getItem('sakinakis_theme') || 'dark';
   currentTab = localStorage.getItem('sakinakis_tab') || 'haber';
   hideInputEl.value = localStorage.getItem(hideStorageKey()) || '';
   onlyInputEl.value = localStorage.getItem(onlyStorageKey()) || '';
