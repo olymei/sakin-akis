@@ -615,7 +615,14 @@ padding:7px 14px;cursor:pointer}}
 .sort-toggle:hover{{background:var(--ink);color:var(--paper)}}
 .sort-toggle.active{{background:var(--accent);color:var(--paper);border-color:var(--accent)}}
 .coverage-badge{{color:var(--accent);font-weight:600}}
-.cluster-sources{{margin-top:12px;padding-left:12px;border-left:2px solid var(--rule)}}
+.sources-toggle-btn{{display:flex;align-items:center;gap:5px;margin-top:10px;
+background:none;border:none;padding:0;cursor:pointer;font-family:'IBM Plex Mono',monospace;
+font-size:11.5px;color:var(--ink-soft)}}
+.sources-toggle-btn:hover{{color:var(--ink)}}
+.sources-toggle-btn .chevron{{display:inline-block;transition:transform 0.15s ease;font-size:9px}}
+.sources-toggle-btn.open .chevron{{transform:rotate(90deg)}}
+.cluster-sources{{display:none;margin-top:10px;padding-left:12px;border-left:2px solid var(--rule)}}
+.cluster-sources.open{{display:block}}
 .cluster-source-row{{display:flex;align-items:baseline;gap:8px;font-family:'IBM Plex Mono',monospace;
 font-size:12px;color:var(--ink-soft);padding:6px 0;border-bottom:1px solid var(--rule)}}
 .cluster-source-row:last-child{{border-bottom:none}}
@@ -656,7 +663,7 @@ display:flex;flex-direction:column}}
 .media{{position:relative;width:100%}}
 .thumb{{width:100%;aspect-ratio:2.2/1;object-fit:cover;background:var(--rule);display:block}}
 .overlay{{position:absolute;left:0;right:0;bottom:0;padding:34px 14px 12px;
-background:linear-gradient(to top, rgba(18,16,13,0.85) 0%, rgba(18,16,13,0.55) 50%, rgba(18,16,13,0) 100%)}}
+background:linear-gradient(to top, rgba(14,12,10,0.92) 0%, rgba(14,12,10,0.72) 55%, rgba(14,12,10,0) 100%)}}
 .overlay .item-meta{{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;
 font-size:12px;color:rgba(231,227,216,0.85);margin-bottom:6px}}
 .overlay .swatch{{width:9px;height:9px;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,0.35)}}
@@ -666,6 +673,14 @@ text-shadow:0 1px 5px rgba(0,0,0,0.55)}}
 .overlay h2 a:hover{{color:#fff}}
 .overlay .eye-btn{{color:rgba(231,227,216,0.85)}}
 .overlay .eye-btn:hover{{color:#fff}}
+.overlay.on-light{{background:linear-gradient(to top, rgba(240,237,230,0.92) 0%, rgba(240,237,230,0.72) 55%, rgba(240,237,230,0) 100%)}}
+.overlay.on-light .item-meta{{color:rgba(20,18,14,0.85)}}
+.overlay.on-light .swatch{{box-shadow:0 0 0 1px rgba(0,0,0,0.25)}}
+.overlay.on-light h2{{text-shadow:0 1px 5px rgba(255,255,255,0.5)}}
+.overlay.on-light h2 a{{color:#1A1815}}
+.overlay.on-light h2 a:hover{{color:#000}}
+.overlay.on-light .eye-btn{{color:rgba(20,18,14,0.85)}}
+.overlay.on-light .eye-btn:hover{{color:#000}}
 .swatch{{width:9px;height:9px;flex-shrink:0}}
 .eye-btn{{background:none;border:none;padding:0;margin:0;cursor:pointer;
 color:var(--ink-soft);display:inline-flex;align-items:center;line-height:0}}
@@ -851,6 +866,7 @@ const I18N = {{
     sortToChrono: "kronolojik göster",
     sortToImportance: "önem sırasına gör",
     coverageBadge: n => `${{n}} kaynakta`,
+    sourcesToggle: n => `${{n}} kaynakta daha oku`,
     tabNews: "Haberler",
     tabGames: "Oyunlar",
     markSeen: "gördüm olarak işaretle",
@@ -883,6 +899,7 @@ const I18N = {{
     sortToChrono: "show chronological",
     sortToImportance: "sort by importance",
     coverageBadge: n => `in ${{n}} sources`,
+    sourcesToggle: n => `read in ${{n}} more sources`,
     tabNews: "News",
     tabGames: "Games",
     markSeen: "mark as seen",
@@ -982,6 +999,52 @@ function relTime(dt, now, L){{
 
 function absDate(dt, L){{
   return `${{dt.getDate()}} ${{L.months[dt.getMonth()].slice(0,3)}}`;
+}}
+
+// Basligin oturdugu bolgenin (gorselin alt ~%45'i) ortalama parlakligini
+// olcer, boylece acik renkli gorsellerde beyaz yerine koyu metin kullanabiliriz.
+// Farkli-kaynakli (cross-origin) gorsellerde CORS engeli varsa (Wikipedia
+// genelde izin verir ama garanti degil) analiz sessizce basarisiz olur ve
+// varsayilan (koyu zemin ustune acik metin, guclu gradient sayesinde zaten
+// okunakli) davranista kalinir -- hicbir sey bozulmaz.
+function sampleImageBrightness(img, callback){{
+  try {{
+    const sw = img.naturalWidth || img.width;
+    const sh = img.naturalHeight || img.height;
+    if (!sw || !sh) {{ callback(null); return; }}
+    const canvas = document.createElement('canvas');
+    const w = 32, h = 16;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const sampleH = Math.max(1, Math.round(sh * 0.45));
+    ctx.drawImage(img, 0, sh - sampleH, sw, sampleH, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    let total = 0, count = 0;
+    for (let i = 0; i < data.length; i += 4){{
+      total += 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+      count++;
+    }}
+    callback(count > 0 ? total / count : null);
+  }} catch(e) {{
+    callback(null);
+  }}
+}}
+
+function applyOverlayContrast(imgEl, overlayEl){{
+  function analyze(){{
+    sampleImageBrightness(imgEl, (brightness) => {{
+      if (brightness !== null && brightness > 165){{
+        overlayEl.classList.add('on-light');
+      }} else {{
+        overlayEl.classList.remove('on-light');
+      }}
+    }});
+  }}
+  if (imgEl.complete && imgEl.naturalWidth > 0){{
+    analyze();
+  }} else {{
+    imgEl.addEventListener('load', analyze);
+  }}
 }}
 
 const TOPIC_SYNONYMS = {{
@@ -1177,7 +1240,7 @@ function render(){{
     const headlineText = aiSummaryItem ? aiSummaryItem.aiSummary : shortest.title;
 
     const thumb = newest.image
-      ? `<img class="thumb" src="${{newest.image}}" alt="" loading="lazy" onerror="this.remove();">`
+      ? `<img class="thumb" src="${{newest.image}}" alt="" loading="lazy" crossorigin="anonymous" onerror="this.remove();">`
       : '';
     const eyeBtn = `<button class="eye-btn" title="${{isSeen ? L.markUnseen : L.markSeen}}">${{isSeen ? EYE_OFF_ICON : EYE_ICON}}</button>`;
 
@@ -1186,7 +1249,8 @@ function render(){{
       : `<span class="swatch" style="background:${{newest.color}}"></span><span>${{newest.source}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`;
 
     const sourcesListHtml = isMulti
-      ? `<div class="cluster-sources">` + cluster.map(m => `
+      ? `<button class="sources-toggle-btn"><span class="chevron">&#9656;</span><span>${{L.sourcesToggle(cluster.length)}}</span></button>
+         <div class="cluster-sources">` + cluster.map(m => `
           <div class="cluster-source-row">
             <span class="swatch" style="background:${{m.color}}"></span>
             <span class="cluster-source-name">${{m.source}}</span>
@@ -1256,6 +1320,21 @@ function render(){{
       try {{ localStorage.setItem('sakinakis_seen', JSON.stringify([...seenLinks])); }} catch(err) {{}}
       render();
     }});
+
+    const thumbImg = el.querySelector('.thumb');
+    const overlayEl = el.querySelector('.overlay');
+    if (thumbImg && overlayEl){{
+      applyOverlayContrast(thumbImg, overlayEl);
+    }}
+
+    const sourcesToggleBtn = el.querySelector('.sources-toggle-btn');
+    if (sourcesToggleBtn){{
+      const sourcesListEl = el.querySelector('.cluster-sources');
+      sourcesToggleBtn.addEventListener('click', () => {{
+        const isOpen = sourcesListEl.classList.toggle('open');
+        sourcesToggleBtn.classList.toggle('open', isOpen);
+      }});
+    }}
   }});
 }}
 
