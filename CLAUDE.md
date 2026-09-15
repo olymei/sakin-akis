@@ -60,9 +60,17 @@ League of Legends, Rainbow Six Siege, Counter-Strike 2, Dota 2, Büyük Oyun Hab
   Valorant, LoL, genel oyun haberleri) → Google News search RSS
   (`news.google.com/rss/search?q=...`) çünkü ya resmi RSS'leri yok ya da denendi/kırık çıktı
 
-⚠️ **Bilinen risk:** Riot Games başlıkları (Valorant/LoL/TFT) için Google News sorguları
-gevşetildi ama gerçek zamanlı doğrulanamadı (sandbox bu domainlere erişemiyor). Eğer hâlâ
-az/boş sonuç dönüyorsa, sorgu formatını tekrar gözden geçirmek gerekebilir.
+**Riot Games (Valorant/LoL/TFT) — patch notes'a özel sorgu:** İlk hali genel oyun adı
+sorgusuydu ("Valorant", "League of Legends" vb.) ve bu sadece esports/kozmetik/roster
+haberleri döndürüyordu, gerçek yama notu HİÇ gelmiyordu (kullanıcı bunu fark edip bildirdi).
+Çözüm: sorguyu `"<Oyun> Patch Notes" site:<resmi-site> -Archive when:Nd` şekline daraltmak
+(Valorant: `site:playvalorant.com`, `when:30d`; LoL: `site:leagueoflegends.com`,
+`-"Wild Rift"` ile kardeş oyunu eleme, `when:14d`; TFT: site kısıtı olmadan `"patch notes"`
+ifadesi yeterli oldu, `when:14d`). `when` penceresi her oyunun yama sıklığına gore ayarlandı
+(LoL/TFT ~2 haftada bir, Valorant ~6 haftada bir). Gerçek Google News sorgularıyla
+(tarayıcıda canlı test edilerek) doğrulandı -- artık en güncel yama notu ilk sıralarda
+geliyor. Hâlâ biraz gürültü var (wiki sayfaları, ilgili haber analizleri) ama kabul
+edilebilir seviyede.
 
 ## Haber temizleme ve kümeleme — iki farklı katman
 
@@ -230,7 +238,6 @@ repoyu klonlayıp doğrudan commit/push yapılabilir hale gelecek.
 
 ## Bilinen sınırlamalar / gözden geçirilmesi gerekenler
 
-- Riot Games (Valorant/LoL/TFT) RSS sorguları canlı doğrulanmadı
 - Bazı haberler için Wikipedia'da eşleşme bulunamayabilir (soyut/genel konular) — bu normal,
   placeholder'a düşer
 - Canvas brightness analizi teorik olarak CORS engeline takılabilir (Wikipedia genelde
