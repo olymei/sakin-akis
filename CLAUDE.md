@@ -81,6 +81,19 @@ Düzeltme: title de link/date gibi `is_atom` dalında `atom:title` ile aranıyor
 bir kaynak eklerken "0 haber" görürsen önce format'ı kontrol et (RSS 2.0 / Atom / RDF hepsi
 farklı davranır).
 
+⚠️ **Ayni namespace bug'i gorsel icin de vardi:** NTV'nin Atom feed'inde item basina
+gercek `<enclosure type="image/jpeg" url="...">` vardi ama `node.find("enclosure")`
+namespace'siz aradigi icin Atom'da hic eslesmiyordu (23 kaynagi kontrol ederken bulundu --
+kullanici "yeni kaynaklarda gorsel yok" diye fark etti). Duzeltme: `is_atom` ise once
+`atom:enclosure` deneniyor, sonra namespace'siz "enclosure"e duesuyor. Ayrica CNN Türk
+standart-disi duz bir `<image>URL</image>` etiketi kullaniyor (ne enclosure ne media:*) --
+bu da gorsel zincirine (enclosure -> media:content -> media:thumbnail -> description/
+content:encoded icindeki img -> duz `<image>`) son adim olarak eklendi. Ikisi de artik
+kendi RSS'inden %100 gercek gorsel aliyor (once Wikipedia fallback'ine duesup ~%5-10
+kapsama alaniyordu). Yeni bir kaynak eklerken gorsel oranı dusukse (Wikipedia baseline'i
+~%8-14, bkz. Cumhuriyet/Bianet/TRT/AA/Sözcü) ama kaynak KENDI RSS'ini kullaniyorsa (Google
+News degil), feed'in ham XML'ini kontrol et -- standart-disi bir gorsel alani olabilir.
+
 **Riot Games (Valorant/LoL/TFT) — patch notes'a özel sorgu:** İlk hali genel oyun adı
 sorgusuydu ("Valorant", "League of Legends" vb.) ve bu sadece esports/kozmetik/roster
 haberleri döndürüyordu, gerçek yama notu HİÇ gelmiyordu (kullanıcı bunu fark edip bildirdi).

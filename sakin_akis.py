@@ -388,9 +388,17 @@ def parse_items(xml_bytes, src):
 
         dt = parse_date(date_text)
 
-        # gorsel arama sirasi: enclosure -> media:content -> media:thumbnail -> aciklama icindeki <img>
+        # gorsel arama sirasi: enclosure -> media:content -> media:thumbnail ->
+        # aciklama icindeki <img> -> duz <image> etiketi (bazi yayincilarin
+        # standart-disi kullandigi item-seviyesi kucuk resim alani)
         image = None
-        enclosure = node.find("enclosure")
+        # Atom'da <entry> varsayilan Atom namespace'ini devraliyor, bu yuzden
+        # namespace'siz "enclosure" aramasi Atom feed'lerinde hicbir zaman
+        # eslesmiyor (NTV'de bulundu -- ayni title/link/date namespace bug'inin
+        # bir varyasyonu). Once dogru namespace'te dene, sonra namespace'siz.
+        enclosure = node.find("atom:enclosure", ns) if is_atom else None
+        if enclosure is None:
+            enclosure = node.find("enclosure")
         if enclosure is not None:
             enc_type = enclosure.get("type", "")
             if "image" in enc_type or not enc_type:
@@ -415,6 +423,11 @@ def parse_items(xml_bytes, src):
             content_el = node.find("content:encoded", ns)
             if content_el is not None:
                 image = find_image_in_html(content_el.text)
+
+        if not image:
+            image_el = node.find("image")
+            if image_el is not None and (image_el.text or "").strip():
+                image = image_el.text.strip()
 
         image = upsize_bbc_thumbnail_url(image)
 
