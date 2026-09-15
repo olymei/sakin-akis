@@ -201,6 +201,18 @@ düşüp kayboldu -- kullanıcı önce Haberler'deki gibi tek tek kaynak listesi
 11 buton fazla geldi, 3 gruba indirgendi. Varsayılan KAPALI (genişlet düğmesiyle açılıyor,
 `sourcesExpanded` state, her iki sekmede ortak).
 
+**Haberler sekmesinde kaynak listesi de ikiye bölünüyor:** "Türkçe kaynaklar" / "Yabancı
+kaynaklar" (`L.sourcesLangTr` / `L.sourcesLangForeign`) alt başlıkları altında, ama
+Oyunlar'ın aksine kaynaklar GRUPLANMIYOR -- her kaynak hâlâ kendi ayrı toggle butonu,
+sadece iki başlık altında sıralanıyor (tek tek acma/kapama kontrolü korunuyor). Her
+kaynağın Python tarafında `SOURCES` içinde `"lang": "tr"` veya `"lang": "en"` alanı var
+(`sources_meta` ile JS'e geçiyor); `buildSourceToggles` bu alana göre iki grup render
+ediyor (CSS: `.sources-subgroup-label{{flex-basis:100%}}` ile ayni flex-wrap konteyner
+icinde satir kaydiriyor, ekstra wrapper div yok). 22 kaynaktan 15'i Türkçe (BBC Türkçe ve
+DW Türkçe dahil -- bunlar yabancı kuruluşların Türkçe yayını ama dil/hedef kitleye göre
+Türkçe grubuna kondu), 7'si yabancı (Reuters, AP, BBC EN, Al Jazeera English, Guardian,
+Euronews, NPR).
+
 **Konu chip'leri (`TOPIC_SYNONYMS`, `TOPIC_KEYS_BY_TAB`):** Sekmeye göre farklı chip seti.
 - Haberler: Futbol, Spor, Ekonomi, Siyaset, Magazin, Teknoloji
 - Oyunlar: Güncelleme Notları (`patchnotes`), Diğer (`digeroyun` — turnuva+yeni içerik+indirim

@@ -29,49 +29,49 @@ import os
 import sys
 
 SOURCES = [
-    {"id": "reuters", "name": "Reuters", "category": "haber",
+    {"id": "reuters", "name": "Reuters", "category": "haber", "lang": "en",
      "rss": "https://news.google.com/rss/search?q=site:reuters.com+when:3d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "ap", "name": "AP", "category": "haber",
+    {"id": "ap", "name": "AP", "category": "haber", "lang": "en",
      "rss": "https://news.google.com/rss/search?q=site:apnews.com+when:3d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "bbc_en", "name": "BBC (EN)", "category": "haber",
+    {"id": "bbc_en", "name": "BBC (EN)", "category": "haber", "lang": "en",
      "rss": "http://feeds.bbci.co.uk/news/world/rss.xml"},
-    {"id": "bbc_tr", "name": "BBC Türkçe", "category": "haber",
+    {"id": "bbc_tr", "name": "BBC Türkçe", "category": "haber", "lang": "tr",
      "rss": "https://feeds.bbci.co.uk/turkce/rss.xml"},
-    {"id": "cumhuriyet", "name": "Cumhuriyet", "category": "haber",
+    {"id": "cumhuriyet", "name": "Cumhuriyet", "category": "haber", "lang": "tr",
      "rss": "https://news.google.com/rss/search?q=site:cumhuriyet.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "bianet", "name": "Bianet", "category": "haber",
+    {"id": "bianet", "name": "Bianet", "category": "haber", "lang": "tr",
      "rss": "https://news.google.com/rss/search?q=site:bianet.org+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "trt_haber", "name": "TRT Haber", "category": "haber",
+    {"id": "trt_haber", "name": "TRT Haber", "category": "haber", "lang": "tr",
      "rss": "https://news.google.com/rss/search?q=site:trthaber.com+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "aa", "name": "Anadolu Ajansı", "category": "haber",
+    {"id": "aa", "name": "Anadolu Ajansı", "category": "haber", "lang": "tr",
      "rss": "https://news.google.com/rss/search?q=site:aa.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "sozcu", "name": "Sözcü", "category": "haber",
+    {"id": "sozcu", "name": "Sözcü", "category": "haber", "lang": "tr",
      "rss": "https://news.google.com/rss/search?q=site:sozcu.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "haberturk", "name": "Habertürk", "category": "haber",
+    {"id": "haberturk", "name": "Habertürk", "category": "haber", "lang": "tr",
      "rss": "https://www.haberturk.com/rss"},
-    {"id": "ntv", "name": "NTV", "category": "haber",
+    {"id": "ntv", "name": "NTV", "category": "haber", "lang": "tr",
      "rss": "https://www.ntv.com.tr/gundem.rss"},
-    {"id": "hurriyet", "name": "Hürriyet", "category": "haber",
+    {"id": "hurriyet", "name": "Hürriyet", "category": "haber", "lang": "tr",
      "rss": "https://www.hurriyet.com.tr/rss/anasayfa"},
-    {"id": "sabah", "name": "Sabah", "category": "haber",
+    {"id": "sabah", "name": "Sabah", "category": "haber", "lang": "tr",
      "rss": "https://www.sabah.com.tr/rss/anasayfa.xml"},
-    {"id": "halktv", "name": "Halk TV", "category": "haber",
+    {"id": "halktv", "name": "Halk TV", "category": "haber", "lang": "tr",
      "rss": "https://halktv.com.tr/rss"},
-    {"id": "t24", "name": "T24", "category": "haber",
+    {"id": "t24", "name": "T24", "category": "haber", "lang": "tr",
      "rss": "https://news.google.com/rss/search?q=site:t24.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "dw_tr", "name": "DW Türkçe", "category": "haber",
+    {"id": "dw_tr", "name": "DW Türkçe", "category": "haber", "lang": "tr",
      "rss": "https://news.google.com/rss/search?q=site:dw.com/tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "aljazeera_en", "name": "Al Jazeera English", "category": "haber",
+    {"id": "aljazeera_en", "name": "Al Jazeera English", "category": "haber", "lang": "en",
      "rss": "https://www.aljazeera.com/xml/rss/all.xml"},
-    {"id": "guardian", "name": "The Guardian", "category": "haber",
+    {"id": "guardian", "name": "The Guardian", "category": "haber", "lang": "en",
      "rss": "https://www.theguardian.com/world/rss"},
-    {"id": "euronews", "name": "Euronews", "category": "haber",
+    {"id": "euronews", "name": "Euronews", "category": "haber", "lang": "en",
      "rss": "https://www.euronews.com/rss?level=theme&name=news"},
-    {"id": "npr", "name": "NPR", "category": "haber",
+    {"id": "npr", "name": "NPR", "category": "haber", "lang": "en",
      "rss": "https://feeds.npr.org/1001/rss.xml"},
-    {"id": "cnnturk", "name": "CNN Türk", "category": "haber",
+    {"id": "cnnturk", "name": "CNN Türk", "category": "haber", "lang": "tr",
      "rss": "https://www.cnnturk.com/feed/rss/turkiye/news"},
-    {"id": "yenisafak", "name": "Yeni Şafak", "category": "haber",
+    {"id": "yenisafak", "name": "Yeni Şafak", "category": "haber", "lang": "tr",
      "rss": "https://www.yenisafak.com/rss?xml=gundem"},
     {"id": "deadlock", "name": "Deadlock", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/1422450/?cc=us&l=english"},
@@ -625,7 +625,7 @@ def build_html(all_items):
         "aiSummary": it.get("ai_summary"),
     } for it in all_items]
 
-    sources_meta = [{"id": s["id"], "name": s["name"], "category": s["category"]} for s in SOURCES]
+    sources_meta = [{"id": s["id"], "name": s["name"], "category": s["category"], "lang": s.get("lang", "")} for s in SOURCES]
 
     generated = now.strftime("%d.%m.%Y %H:%M UTC")
 
@@ -704,6 +704,9 @@ display:flex;align-items:center;gap:5px}}
 .sources-label .chevron{{display:inline-block;transition:transform 0.15s ease;font-size:9px}}
 .sources-label.expanded .chevron{{transform:rotate(90deg)}}
 .sources{{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:6px}}
+.sources-subgroup-label{{flex-basis:100%;font-family:'IBM Plex Mono',monospace;font-size:10px;
+color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin:8px 0 2px}}
+.sources-subgroup-label:first-child{{margin-top:0}}
 .src-toggle{{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;
 font-size:12.5px;cursor:pointer;user-select:none;padding:3px 0;
 border-bottom:1px solid transparent;color:var(--ink-soft);background:none;border-top:none;
@@ -908,6 +911,8 @@ const I18N = {{
     filterStatus: (shown, total) => `${{shown}} / ${{total}} haber gösteriliyor`,
     readFull: "kaynakta aç",
     sourcesLabel: "kaynaklar",
+    sourcesLangTr: "Türkçe kaynaklar",
+    sourcesLangForeign: "Yabancı kaynaklar",
     expandedHint: words => `genişletilmiş eşleşme: ${{words.join(', ')}} de dahil`,
     importantLabel: "önemli (virgülle ayır)",
     sortToChrono: "kronolojik göster",
@@ -938,6 +943,8 @@ const I18N = {{
     filterStatus: (shown, total) => `showing ${{shown}} / ${{total}} articles`,
     readFull: "open source",
     sourcesLabel: "sources",
+    sourcesLangTr: "Turkish sources",
+    sourcesLangForeign: "International sources",
     expandedHint: words => `expanded match includes: ${{words.join(', ')}}`,
     importantLabel: "important (comma-separated)",
     sortToChrono: "show chronological",
@@ -1044,19 +1051,30 @@ function buildSourceToggles(){{
   }};
   el.style.display = sourcesExpanded ? '' : 'none';
   el.innerHTML = '';
-  tabSources.forEach(s => {{
-    const btn = document.createElement('button');
-    btn.className = 'src-toggle' + (activeSources.has(s.id) ? ' active' : '');
-    btn.textContent = s.name;
-    btn.addEventListener('click', () => {{
-      if (activeSources.has(s.id)) activeSources.delete(s.id);
-      else activeSources.add(s.id);
-      currentPage = 1;
-      try {{ localStorage.setItem('sakinakis_sources', JSON.stringify([...activeSources])); }} catch(e) {{}}
-      render();
+
+  function appendGroup(groupLabel, sources){{
+    if (!sources.length) return;
+    const heading = document.createElement('div');
+    heading.className = 'sources-subgroup-label';
+    heading.textContent = groupLabel;
+    el.appendChild(heading);
+    sources.forEach(s => {{
+      const btn = document.createElement('button');
+      btn.className = 'src-toggle' + (activeSources.has(s.id) ? ' active' : '');
+      btn.textContent = s.name;
+      btn.addEventListener('click', () => {{
+        if (activeSources.has(s.id)) activeSources.delete(s.id);
+        else activeSources.add(s.id);
+        currentPage = 1;
+        try {{ localStorage.setItem('sakinakis_sources', JSON.stringify([...activeSources])); }} catch(e) {{}}
+        render();
+      }});
+      el.appendChild(btn);
     }});
-    el.appendChild(btn);
-  }});
+  }}
+
+  appendGroup(L.sourcesLangTr, tabSources.filter(s => s.lang === 'tr'));
+  appendGroup(L.sourcesLangForeign, tabSources.filter(s => s.lang !== 'tr'));
 }}
 
 function dateLabel(dt, now, L){{
