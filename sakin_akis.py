@@ -669,7 +669,7 @@ font-size:12px;color:rgba(231,227,216,0.85);margin-bottom:6px}}
 .overlay .swatch{{width:9px;height:9px;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,0.35)}}
 .overlay h2{{font-size:20px;line-height:1.32;font-weight:600;margin:0;
 text-shadow:0 1px 5px rgba(0,0,0,0.55)}}
-.overlay h2 a{{color:var(--paper);text-decoration:none}}
+.overlay h2 a{{color:#E7E3D8;text-decoration:none}}
 .overlay h2 a:hover{{color:#fff}}
 .overlay .eye-btn{{color:rgba(231,227,216,0.85)}}
 .overlay .eye-btn:hover{{color:#fff}}
