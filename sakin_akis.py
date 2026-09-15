@@ -732,17 +732,17 @@ margin-top:40px;padding-top:16px;border-top:1px solid var(--rule)}}
 <div class="filters">
   <div class="filter-field">
     <label id="hideLabel" for="hideInput">gizle (virgülle ayır)</label>
-    <input type="text" id="hideInput" placeholder="örn: transfer, magazin">
+    <input type="text" id="hideInput">
     <div class="topic-chips" id="hideTopicChips"></div>
   </div>
   <div class="filter-field">
     <label id="onlyLabel" for="onlyInput">sadece göster (virgülle ayır)</label>
-    <input type="text" id="onlyInput" placeholder="örn: ekonomi, teknoloji">
+    <input type="text" id="onlyInput">
     <div class="topic-chips" id="onlyTopicChips"></div>
   </div>
   <div class="filter-field">
     <label id="importantLabel" for="importantInput">önemli (virgülle ayır)</label>
-    <input type="text" id="importantInput" placeholder="örn: deprem, seçim, savaş">
+    <input type="text" id="importantInput">
     <div class="topic-chips" id="importantTopicChips"></div>
   </div>
 </div>
@@ -884,14 +884,11 @@ const I18N = {{
     toggleLabel: "EN",
     hideLabel: "gizle (virgülle ayır)",
     onlyLabel: "sadece göster (virgülle ayır)",
-    hidePlaceholder: "örn: transfer, magazin",
-    onlyPlaceholder: "örn: ekonomi, teknoloji",
     filterStatus: (shown, total) => `${{shown}} / ${{total}} haber gösteriliyor`,
     readFull: "kaynakta aç",
     sourcesLabel: "kaynaklar",
     expandedHint: words => `genişletilmiş eşleşme: ${{words.join(', ')}} de dahil`,
     importantLabel: "önemli (virgülle ayır)",
-    importantPlaceholder: "örn: deprem, seçim, savaş",
     sortToChrono: "kronolojik göster",
     sortToImportance: "önem sırasına gör",
     coverageBadge: n => `${{n}} kaynakta`,
@@ -917,14 +914,11 @@ const I18N = {{
     toggleLabel: "TR",
     hideLabel: "hide (comma-separated)",
     onlyLabel: "only show (comma-separated)",
-    hidePlaceholder: "e.g. transfer, celebrity",
-    onlyPlaceholder: "e.g. economy, tech",
     filterStatus: (shown, total) => `showing ${{shown}} / ${{total}} articles`,
     readFull: "open source",
     sourcesLabel: "sources",
     expandedHint: words => `expanded match includes: ${{words.join(', ')}}`,
     importantLabel: "important (comma-separated)",
-    importantPlaceholder: "e.g. earthquake, election, war",
     sortToChrono: "show chronological",
     sortToImportance: "sort by importance",
     coverageBadge: n => `in ${{n}} sources`,
@@ -1205,10 +1199,7 @@ function render(){{
   document.getElementById('pageFooter').textContent = L.footer(GENERATED);
   document.getElementById('hideLabel').textContent = L.hideLabel;
   document.getElementById('onlyLabel').textContent = L.onlyLabel;
-  document.getElementById('hideInput').placeholder = L.hidePlaceholder;
-  document.getElementById('onlyInput').placeholder = L.onlyPlaceholder;
   document.getElementById('importantLabel').textContent = L.importantLabel;
-  document.getElementById('importantInput').placeholder = L.importantPlaceholder;
 
   const sortBtn = document.getElementById('sortToggle');
   sortBtn.textContent = sortMode === 'chrono' ? L.sortToImportance : L.sortToChrono;
