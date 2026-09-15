@@ -47,6 +47,32 @@ SOURCES = [
      "rss": "https://news.google.com/rss/search?q=site:aa.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
     {"id": "sozcu", "name": "Sözcü", "color": "#C97A1F", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:sozcu.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
+    {"id": "haberturk", "name": "Habertürk", "color": "#B0202E", "category": "haber",
+     "rss": "https://www.haberturk.com/rss"},
+    {"id": "ntv", "name": "NTV", "color": "#1B5E8C", "category": "haber",
+     "rss": "https://www.ntv.com.tr/gundem.rss"},
+    {"id": "hurriyet", "name": "Hürriyet", "color": "#D2232A", "category": "haber",
+     "rss": "https://www.hurriyet.com.tr/rss/anasayfa"},
+    {"id": "sabah", "name": "Sabah", "color": "#E07B1A", "category": "haber",
+     "rss": "https://www.sabah.com.tr/rss/anasayfa.xml"},
+    {"id": "halktv", "name": "Halk TV", "color": "#A11D3A", "category": "haber",
+     "rss": "https://halktv.com.tr/rss"},
+    {"id": "t24", "name": "T24", "color": "#5B5B7A", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:t24.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
+    {"id": "dw_tr", "name": "DW Türkçe", "color": "#0B5FA5", "category": "haber",
+     "rss": "https://news.google.com/rss/search?q=site:dw.com/tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
+    {"id": "aljazeera_en", "name": "Al Jazeera English", "color": "#D4A017", "category": "haber",
+     "rss": "https://www.aljazeera.com/xml/rss/all.xml"},
+    {"id": "guardian", "name": "The Guardian", "color": "#052962", "category": "haber",
+     "rss": "https://www.theguardian.com/world/rss"},
+    {"id": "euronews", "name": "Euronews", "color": "#0077B6", "category": "haber",
+     "rss": "https://www.euronews.com/rss?level=theme&name=news"},
+    {"id": "npr", "name": "NPR", "color": "#8A1538", "category": "haber",
+     "rss": "https://feeds.npr.org/1001/rss.xml"},
+    {"id": "cnnturk", "name": "CNN Türk", "color": "#B22222", "category": "haber",
+     "rss": "https://www.cnnturk.com/feed/rss/turkiye/news"},
+    {"id": "yenisafak", "name": "Yeni Şafak", "color": "#2E5339", "category": "haber",
+     "rss": "https://www.yenisafak.com/rss?xml=gundem"},
     {"id": "deadlock", "name": "Deadlock", "color": "#6B2E5F", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/1422450/?cc=us&l=english"},
     {"id": "bodycam", "name": "Bodycam", "color": "#4B5320", "category": "oyun",
@@ -338,10 +364,9 @@ def parse_items(xml_bytes, src):
         is_atom = True
 
     for node in nodes:
-        title_el = node.find("title")
-        title = (title_el.text or "").strip() if title_el is not None else ""
-
         if is_atom:
+            title_el = node.find("atom:title", ns)
+            title = (title_el.text or "").strip() if title_el is not None else ""
             link_el = node.find("atom:link", ns)
             link = link_el.get("href") if link_el is not None else ""
             date_el = node.find("atom:published", ns)
@@ -349,6 +374,8 @@ def parse_items(xml_bytes, src):
                 date_el = node.find("atom:updated", ns)
             date_text = date_el.text if date_el is not None else ""
         else:
+            title_el = node.find("title")
+            title = (title_el.text or "").strip() if title_el is not None else ""
             link_el = node.find("link")
             link = (link_el.text or "").strip() if link_el is not None else ""
             date_el = node.find("pubDate")

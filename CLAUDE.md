@@ -45,9 +45,15 @@ Bu ayrım bilinçli bir tasarım kararı — yerelde hız, CI'da tam özellik.
 İki kategori: `"haber"` ve `"oyun"`. Her kaynağın `id`, `name`, `color` (hex, marka rengi),
 `category`, `rss` (URL) alanları var.
 
-**Haberler (9):** Reuters, AP, BBC (EN), BBC Türkçe, Cumhuriyet, Bianet, TRT Haber,
-Anadolu Ajansı, Sözcü — bilinçli olarak siyasi yelpazede dengeli (devlet/muhalefet/bağımsız
-karışımı), kullanıcı açıkça bunu istedi.
+**Haberler (22):** Reuters, AP, BBC (EN), BBC Türkçe, Cumhuriyet, Bianet, TRT Haber,
+Anadolu Ajansı, Sözcü, Habertürk, NTV, Hürriyet, Sabah, Halk TV, T24, DW Türkçe,
+Al Jazeera English, The Guardian, Euronews, NPR, CNN Türk, Yeni Şafak — bilinçli olarak
+siyasi yelpazede dengeli (devlet: TRT/AA; pro-hükümet: Sabah/Habertürk/Yeni Şafak/CNN Türk;
+muhalefet: Sözcü/Cumhuriyet/Halk TV; bağımsız: Bianet/T24/Hürriyet; uluslararası:
+Reuters/AP/BBC/Al Jazeera/Guardian/Euronews/NPR/DW), kullanıcı açıkça bunu istedi. 9'dan
+22'ye genişletildi -- kullanıcı "büyük kaynakların hepsi olsun" dedi, TR + İngilizce/
+uluslararası karışımı özellikle istendi. 22'de durulması bilinçli bir sınır: daha fazlası
+kaynak listesinin kendisini gürültüye çevirir (kullanıcı da bunu onayladı).
 
 **Oyunlar (11):** Deadlock, Bodycam, Project Zomboid, Minecraft, TFT, Valorant,
 League of Legends, Rainbow Six Siege, Counter-Strike 2, Dota 2, Büyük Oyun Haberleri (genel)
@@ -55,10 +61,22 @@ League of Legends, Rainbow Six Siege, Counter-Strike 2, Dota 2, Büyük Oyun Hab
 **RSS kaynak stratejisi:**
 - Steam'de olan oyunlar (Deadlock, Bodycam, Zomboid, R6 Siege, CS2, Dota2) →
   `https://store.steampowered.com/feeds/news/app/{appid}/` — resmi ve güvenilir
-- Kendi RSS'i olan (BBC) → direkt kullanılıyor
-- Geri kalan HERKES (Reuters, AP, Cumhuriyet, Bianet, TRT, AA, Sözcü, Minecraft, TFT,
-  Valorant, LoL, genel oyun haberleri) → Google News search RSS
+- Kendi RSS'i olan (BBC, Habertürk, NTV, Hürriyet, Sabah, Halk TV, Al Jazeera English,
+  The Guardian, Euronews, NPR, CNN Türk, Yeni Şafak) → direkt kullanılıyor
+- Geri kalan HERKES (Reuters, AP, Cumhuriyet, Bianet, TRT, AA, Sözcü, T24, DW Türkçe,
+  Minecraft, TFT, Valorant, LoL, genel oyun haberleri) → Google News search RSS
   (`news.google.com/rss/search?q=...`) çünkü ya resmi RSS'leri yok ya da denendi/kırık çıktı
+  (T24'ün `/rss` yolu 404 dönüyor; DW Türkçe'nin resmi feed'i RSS 1.0/RDF formatında,
+  parser'ın desteklemediği format — Google News fallback'e düşürüldü)
+
+⚠️ **Atom format bug'ı (NTV eklenirken bulundu):** `parse_items` içinde Atom dalı
+(`is_atom`), `<title>` etiketini namespace'siz arıyordu (`node.find("title")`) ama Atom'da
+title `{http://www.w3.org/2005/Atom}title` namespace'inde -- bu yüzden tüm Atom kaynakları
+SESSİZCE 0 haber döndürüyordu (başlık boş çıkıp `if title and link and dt` filtresine
+takılıyordu). O ana kadar hiçbir kaynak Atom formatında olmadığı için fark edilmemişti.
+Düzeltme: title de link/date gibi `is_atom` dalında `atom:title` ile aranıyor artık. Yeni
+bir kaynak eklerken "0 haber" görürsen önce format'ı kontrol et (RSS 2.0 / Atom / RDF hepsi
+farklı davranır).
 
 **Riot Games (Valorant/LoL/TFT) — patch notes'a özel sorgu:** İlk hali genel oyun adı
 sorgusuydu ("Valorant", "League of Legends" vb.) ve bu sadece esports/kozmetik/roster
