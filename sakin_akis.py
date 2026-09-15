@@ -29,71 +29,71 @@ import os
 import sys
 
 SOURCES = [
-    {"id": "reuters", "name": "Reuters", "color": "#A6432D", "category": "haber",
+    {"id": "reuters", "name": "Reuters", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:reuters.com+when:3d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "ap", "name": "AP", "color": "#3A5A78", "category": "haber",
+    {"id": "ap", "name": "AP", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:apnews.com+when:3d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "bbc_en", "name": "BBC (EN)", "color": "#7A1F2B", "category": "haber",
+    {"id": "bbc_en", "name": "BBC (EN)", "category": "haber",
      "rss": "http://feeds.bbci.co.uk/news/world/rss.xml"},
-    {"id": "bbc_tr", "name": "BBC Türkçe", "color": "#7A1F2B", "category": "haber",
+    {"id": "bbc_tr", "name": "BBC Türkçe", "category": "haber",
      "rss": "https://feeds.bbci.co.uk/turkce/rss.xml"},
-    {"id": "cumhuriyet", "name": "Cumhuriyet", "color": "#4B4633", "category": "haber",
+    {"id": "cumhuriyet", "name": "Cumhuriyet", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:cumhuriyet.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "bianet", "name": "Bianet", "color": "#2F6B5E", "category": "haber",
+    {"id": "bianet", "name": "Bianet", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:bianet.org+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "trt_haber", "name": "TRT Haber", "color": "#8B1E1E", "category": "haber",
+    {"id": "trt_haber", "name": "TRT Haber", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:trthaber.com+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "aa", "name": "Anadolu Ajansı", "color": "#2E4A6B", "category": "haber",
+    {"id": "aa", "name": "Anadolu Ajansı", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:aa.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "sozcu", "name": "Sözcü", "color": "#C97A1F", "category": "haber",
+    {"id": "sozcu", "name": "Sözcü", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:sozcu.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "haberturk", "name": "Habertürk", "color": "#B0202E", "category": "haber",
+    {"id": "haberturk", "name": "Habertürk", "category": "haber",
      "rss": "https://www.haberturk.com/rss"},
-    {"id": "ntv", "name": "NTV", "color": "#1B5E8C", "category": "haber",
+    {"id": "ntv", "name": "NTV", "category": "haber",
      "rss": "https://www.ntv.com.tr/gundem.rss"},
-    {"id": "hurriyet", "name": "Hürriyet", "color": "#D2232A", "category": "haber",
+    {"id": "hurriyet", "name": "Hürriyet", "category": "haber",
      "rss": "https://www.hurriyet.com.tr/rss/anasayfa"},
-    {"id": "sabah", "name": "Sabah", "color": "#E07B1A", "category": "haber",
+    {"id": "sabah", "name": "Sabah", "category": "haber",
      "rss": "https://www.sabah.com.tr/rss/anasayfa.xml"},
-    {"id": "halktv", "name": "Halk TV", "color": "#A11D3A", "category": "haber",
+    {"id": "halktv", "name": "Halk TV", "category": "haber",
      "rss": "https://halktv.com.tr/rss"},
-    {"id": "t24", "name": "T24", "color": "#5B5B7A", "category": "haber",
+    {"id": "t24", "name": "T24", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:t24.com.tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "dw_tr", "name": "DW Türkçe", "color": "#0B5FA5", "category": "haber",
+    {"id": "dw_tr", "name": "DW Türkçe", "category": "haber",
      "rss": "https://news.google.com/rss/search?q=site:dw.com/tr+when:3d&hl=tr&gl=TR&ceid=TR:tr"},
-    {"id": "aljazeera_en", "name": "Al Jazeera English", "color": "#D4A017", "category": "haber",
+    {"id": "aljazeera_en", "name": "Al Jazeera English", "category": "haber",
      "rss": "https://www.aljazeera.com/xml/rss/all.xml"},
-    {"id": "guardian", "name": "The Guardian", "color": "#052962", "category": "haber",
+    {"id": "guardian", "name": "The Guardian", "category": "haber",
      "rss": "https://www.theguardian.com/world/rss"},
-    {"id": "euronews", "name": "Euronews", "color": "#0077B6", "category": "haber",
+    {"id": "euronews", "name": "Euronews", "category": "haber",
      "rss": "https://www.euronews.com/rss?level=theme&name=news"},
-    {"id": "npr", "name": "NPR", "color": "#8A1538", "category": "haber",
+    {"id": "npr", "name": "NPR", "category": "haber",
      "rss": "https://feeds.npr.org/1001/rss.xml"},
-    {"id": "cnnturk", "name": "CNN Türk", "color": "#B22222", "category": "haber",
+    {"id": "cnnturk", "name": "CNN Türk", "category": "haber",
      "rss": "https://www.cnnturk.com/feed/rss/turkiye/news"},
-    {"id": "yenisafak", "name": "Yeni Şafak", "color": "#2E5339", "category": "haber",
+    {"id": "yenisafak", "name": "Yeni Şafak", "category": "haber",
      "rss": "https://www.yenisafak.com/rss?xml=gundem"},
-    {"id": "deadlock", "name": "Deadlock", "color": "#6B2E5F", "category": "oyun",
+    {"id": "deadlock", "name": "Deadlock", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/1422450/?cc=us&l=english"},
-    {"id": "bodycam", "name": "Bodycam", "color": "#4B5320", "category": "oyun",
+    {"id": "bodycam", "name": "Bodycam", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/2406770/?cc=us&l=english"},
-    {"id": "zomboid", "name": "Project Zomboid", "color": "#5C7A29", "category": "oyun",
+    {"id": "zomboid", "name": "Project Zomboid", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/108600/?cc=us&l=english"},
-    {"id": "minecraft", "name": "Minecraft", "color": "#4E8B3B", "category": "oyun",
+    {"id": "minecraft", "name": "Minecraft", "category": "oyun",
      "rss": "https://news.google.com/rss/search?q=minecraft+update+when:7d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "tft", "name": "TFT", "color": "#C89B3C", "category": "oyun",
+    {"id": "tft", "name": "TFT", "category": "oyun",
      "rss": "https://news.google.com/rss/search?q=%22Teamfight+Tactics%22+%22patch+notes%22+when:14d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "valorant", "name": "Valorant", "color": "#B8384A", "category": "oyun",
+    {"id": "valorant", "name": "Valorant", "category": "oyun",
      "rss": "https://news.google.com/rss/search?q=%22VALORANT+Patch+Notes%22+site:playvalorant.com+-Archive+when:30d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "lol", "name": "League of Legends", "color": "#0F3E6B", "category": "oyun",
+    {"id": "lol", "name": "League of Legends", "category": "oyun",
      "rss": "https://news.google.com/rss/search?q=%22League+of+Legends%22+%22patch+notes%22+site:leagueoflegends.com+-%22Wild+Rift%22+when:14d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "r6siege", "name": "Rainbow Six Siege", "color": "#3C4A3E", "category": "oyun",
+    {"id": "r6siege", "name": "Rainbow Six Siege", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/359550/?cc=us&l=english"},
-    {"id": "cs2", "name": "Counter-Strike 2", "color": "#8C7A4B", "category": "oyun",
+    {"id": "cs2", "name": "Counter-Strike 2", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/730/?cc=us&l=english"},
-    {"id": "dota2", "name": "Dota 2", "color": "#7A2E2E", "category": "oyun",
+    {"id": "dota2", "name": "Dota 2", "category": "oyun",
      "rss": "https://store.steampowered.com/feeds/news/app/570/?cc=us&l=english"},
-    {"id": "game_news", "name": "Buyuk Oyun Haberleri", "color": "#1B3A57", "category": "oyun",
+    {"id": "game_news", "name": "Buyuk Oyun Haberleri", "category": "oyun",
      "rss": "https://news.google.com/rss/search?q=(trailer+OR+announcement+OR+reveal)+game+when:3d&hl=en-US&gl=US&ceid=US:en"},
 ]
 
@@ -301,19 +301,22 @@ GAME_FALLBACK_IMAGES = {
 }
 
 
-def make_placeholder_image(source_name, color):
+def make_placeholder_image(source_name):
     """RSS'te gorsel gelmeyen (cogunlukla Google News uzerinden gelen) haberler
-    icin aninda, network'e gitmeden bir monogram gorseli uretir: kaynagin
-    rengiyle boyali bir zemin + adin ilk harfi. Kartin kendi oranina (2.2:1)
-    esit bir viewBox kullanilir ki object-fit:cover kirpma yapmasin; harf
-    ustte/soluk tutulur cunku kartin alt kismi baslik yazisi icin ayrilmis."""
+    icin aninda, network'e gitmeden bir monogram gorseli uretir: notr gri bir
+    zemin + adin ilk harfi (siyah-beyaz tema, kaynak rengi yok). Kartin kendi
+    oranina (2.2:1) esit bir viewBox kullanilir ki object-fit:cover kirpma
+    yapmasin; harf ustte/soluk tutulur cunku kartin alt kismi baslik yazisi
+    icin ayrilmis. Bu SVG data URI olarak gomulu oldugu icin sayfanin
+    light/dark tema degiskenlerine erisemiyor -- bu yuzden sabit bir gri ton
+    kullanilir, ikisinde de okunabilir."""
     letter = (source_name.strip()[0].upper() if source_name.strip() else "?")
     letter = letter.replace("&", "&amp;").replace("<", "&lt;")
     svg = (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 100">'
-        f'<rect width="220" height="100" fill="{color}"/>'
+        f'<rect width="220" height="100" fill="#2B2B2B"/>'
         f'<text x="110" y="40" font-family="Georgia, serif" font-size="34" '
-        f'font-weight="600" fill="#E7E3D8" fill-opacity="0.55" text-anchor="middle" '
+        f'font-weight="600" fill="#FFFFFF" fill-opacity="0.55" text-anchor="middle" '
         f'dominant-baseline="middle">{letter}</text>'
         f'</svg>'
     )
@@ -421,7 +424,6 @@ def parse_items(xml_bytes, src):
                 "source": src["name"],
                 "sourceId": src["id"],
                 "category": src["category"],
-                "color": src["color"],
                 "image": image,
             })
 
@@ -604,11 +606,11 @@ def build_html(all_items):
 
     favicon_svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-        '<rect width="32" height="32" fill="#E7E3D8"/>'
-        '<rect x="6" y="8" width="20" height="3" fill="#22252A"/>'
-        '<rect x="6" y="14.5" width="14" height="3" fill="#22252A"/>'
-        '<rect x="6" y="21" width="9" height="3" fill="#22252A"/>'
-        '<circle cx="25" cy="22.5" r="2.6" fill="#A6432D"/>'
+        '<rect width="32" height="32" fill="#FFFFFF"/>'
+        '<rect x="6" y="8" width="20" height="3" fill="#000000"/>'
+        '<rect x="6" y="14.5" width="14" height="3" fill="#000000"/>'
+        '<rect x="6" y="21" width="9" height="3" fill="#000000"/>'
+        '<circle cx="25" cy="22.5" r="2.6" fill="#000000"/>'
         '</svg>'
     )
     favicon_b64 = base64.b64encode(favicon_svg.encode("utf-8")).decode("ascii")
@@ -619,12 +621,11 @@ def build_html(all_items):
         "source": it["source"],
         "sourceId": it["sourceId"],
         "category": it["category"],
-        "color": it["color"],
-        "image": it.get("image") or make_placeholder_image(it["source"], it["color"]),
+        "image": it.get("image") or make_placeholder_image(it["source"]),
         "aiSummary": it.get("ai_summary"),
     } for it in all_items]
 
-    sources_meta = [{"id": s["id"], "name": s["name"], "color": s["color"], "category": s["category"]} for s in SOURCES]
+    sources_meta = [{"id": s["id"], "name": s["name"], "category": s["category"]} for s in SOURCES]
 
     generated = now.strftime("%d.%m.%Y %H:%M UTC")
 
@@ -634,8 +635,8 @@ def build_html(all_items):
 <title>Sakin Akış</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
-:root{{--paper:#1B1A17;--paper-raised:#29271F;--ink:#E7E3D8;--ink-soft:#9C9686;--rule:#3A372E;--accent:#C1573D;}}
-html.light{{--paper:#E7E3D8;--paper-raised:#DFDACC;--ink:#22252A;--ink-soft:#5B5D57;--rule:#C9C3B2;--accent:#A6432D;}}
+:root{{--paper:#000000;--paper-raised:#161616;--ink:#FFFFFF;--ink-soft:#999999;--rule:#333333;--accent:#FFFFFF;}}
+html.light{{--paper:#FFFFFF;--paper-raised:#F0F0F0;--ink:#000000;--ink-soft:#666666;--rule:#DDDDDD;--accent:#000000;}}
 *{{box-sizing:border-box}} body{{margin:0;background:var(--paper);color:var(--ink);
 font-family:'Source Serif 4',Georgia,serif;position:relative;transition:background 0.15s ease,color 0.15s ease}}
 .wrap{{max-width:640px;margin:0 auto;padding:32px 20px 80px}}
@@ -682,7 +683,6 @@ font-size:11.5px;color:var(--ink-soft)}}
 font-size:12px;color:var(--ink-soft);padding:6px 0;border-bottom:1px solid var(--rule)}}
 .cluster-source-row:last-child{{border-bottom:none}}
 .cluster-source-name{{flex-shrink:0;min-width:70px;color:var(--ink-soft)}}
-.cluster-source-row .swatch{{flex-shrink:0;position:relative;top:1px}}
 .cluster-source-row a{{color:var(--ink-soft);text-decoration:none;font-family:'Source Serif 4',Georgia,serif;
 font-size:13.5px;line-height:1.4}}
 .cluster-source-row a:hover{{color:var(--accent)}}
@@ -709,7 +709,6 @@ font-size:12.5px;cursor:pointer;user-select:none;padding:3px 0;
 border-bottom:1px solid transparent;color:var(--ink-soft);background:none;border-top:none;
 border-left:none;border-right:none}}
 .src-toggle.active{{color:var(--ink);border-bottom-color:var(--ink)}}
-.src-toggle .swatch{{width:9px;height:9px;flex-shrink:0}}
 .date-divider{{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);
 margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}}
 .item{{padding:0 0 22px;margin-bottom:22px;border-bottom:1px solid var(--rule);
@@ -718,25 +717,22 @@ display:flex;flex-direction:column}}
 .media{{position:relative;width:100%}}
 .thumb{{width:100%;aspect-ratio:2.2/1;object-fit:cover;background:var(--rule);display:block}}
 .overlay{{position:absolute;left:0;right:0;bottom:0;padding:34px 14px 12px;
-background:linear-gradient(to top, rgba(14,12,10,0.92) 0%, rgba(14,12,10,0.72) 55%, rgba(14,12,10,0) 100%)}}
+background:linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 55%, rgba(0,0,0,0) 100%)}}
 .overlay .item-meta{{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;
-font-size:12px;color:rgba(231,227,216,0.85);margin-bottom:6px}}
-.overlay .swatch{{width:9px;height:9px;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,0.35)}}
+font-size:12px;color:rgba(255,255,255,0.85);margin-bottom:6px}}
 .overlay h2{{font-size:20px;line-height:1.32;font-weight:600;margin:0;
 text-shadow:0 1px 5px rgba(0,0,0,0.55)}}
-.overlay h2 a{{color:#E7E3D8;text-decoration:none}}
+.overlay h2 a{{color:#FFFFFF;text-decoration:none}}
 .overlay h2 a:hover{{color:#fff}}
-.overlay .eye-btn{{color:rgba(231,227,216,0.85)}}
+.overlay .eye-btn{{color:rgba(255,255,255,0.85)}}
 .overlay .eye-btn:hover{{color:#fff}}
-.overlay.on-light{{background:linear-gradient(to top, rgba(240,237,230,0.92) 0%, rgba(240,237,230,0.72) 55%, rgba(240,237,230,0) 100%)}}
-.overlay.on-light .item-meta{{color:rgba(20,18,14,0.85)}}
-.overlay.on-light .swatch{{box-shadow:0 0 0 1px rgba(0,0,0,0.25)}}
+.overlay.on-light{{background:linear-gradient(to top, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 55%, rgba(255,255,255,0) 100%)}}
+.overlay.on-light .item-meta{{color:rgba(0,0,0,0.85)}}
 .overlay.on-light h2{{text-shadow:0 1px 5px rgba(255,255,255,0.5)}}
-.overlay.on-light h2 a{{color:#1A1815}}
+.overlay.on-light h2 a{{color:#000000}}
 .overlay.on-light h2 a:hover{{color:#000}}
-.overlay.on-light .eye-btn{{color:rgba(20,18,14,0.85)}}
+.overlay.on-light .eye-btn{{color:rgba(0,0,0,0.85)}}
 .overlay.on-light .eye-btn:hover{{color:#000}}
-.swatch{{width:9px;height:9px;flex-shrink:0}}
 .eye-btn{{background:none;border:none;padding:0;margin:0;cursor:pointer;
 color:var(--ink-soft);display:inline-flex;align-items:center;line-height:0}}
 .eye-btn:hover{{color:var(--accent)}}
@@ -999,9 +995,9 @@ function buildTabs(){{
 // "Riot Games" ve "Steam" marka isimleri, dile gore degismez; "Diger" ise
 // L.oyunOtherLabel ile cevriliyor (asagida buildSourceToggles icinde).
 const OYUN_SOURCE_GROUPS = [
-  {{ id: 'riot', label: 'Riot Games', color: '#D32936', sourceIds: ['valorant', 'lol', 'tft'] }},
-  {{ id: 'steam', label: 'Steam', color: '#66C0F4', sourceIds: ['deadlock', 'bodycam', 'zomboid', 'r6siege', 'cs2', 'dota2'] }},
-  {{ id: 'other', label: null, color: '#8A8570', sourceIds: ['minecraft', 'game_news'] }},
+  {{ id: 'riot', label: 'Riot Games', sourceIds: ['valorant', 'lol', 'tft'] }},
+  {{ id: 'steam', label: 'Steam', sourceIds: ['deadlock', 'bodycam', 'zomboid', 'r6siege', 'cs2', 'dota2'] }},
+  {{ id: 'other', label: null, sourceIds: ['minecraft', 'game_news'] }},
 ];
 
 function buildSourceToggles(){{
@@ -1025,7 +1021,7 @@ function buildSourceToggles(){{
       const btn = document.createElement('button');
       btn.className = 'src-toggle' + (allActive ? ' active' : '');
       const label = g.label || L.oyunOtherLabel;
-      btn.innerHTML = `<span class="swatch" style="background:${{g.color}}"></span><span>${{label}}</span>`;
+      btn.textContent = label;
       btn.addEventListener('click', () => {{
         if (allActive) g.sourceIds.forEach(id => activeSources.delete(id));
         else g.sourceIds.forEach(id => activeSources.add(id));
@@ -1051,7 +1047,7 @@ function buildSourceToggles(){{
   tabSources.forEach(s => {{
     const btn = document.createElement('button');
     btn.className = 'src-toggle' + (activeSources.has(s.id) ? ' active' : '');
-    btn.innerHTML = `<span class="swatch" style="background:${{s.color}}"></span><span>${{s.name}}</span>`;
+    btn.textContent = s.name;
     btn.addEventListener('click', () => {{
       if (activeSources.has(s.id)) activeSources.delete(s.id);
       else activeSources.add(s.id);
@@ -1324,13 +1320,12 @@ function render(){{
 
     const metaHtml = isMulti
       ? `<span class="coverage-badge">${{L.coverageBadge(cluster.length)}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`
-      : `<span class="swatch" style="background:${{newest.color}}"></span><span>${{newest.source}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`;
+      : `<span>${{newest.source}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`;
 
     const sourcesListHtml = isMulti
       ? `<button class="sources-toggle-btn"><span class="chevron">&#9656;</span><span>${{L.sourcesToggle(cluster.length)}}</span></button>
          <div class="cluster-sources">` + cluster.map(m => `
           <div class="cluster-source-row">
-            <span class="swatch" style="background:${{m.color}}"></span>
             <span class="cluster-source-name">${{m.source}}</span>
             <a href="${{m.link}}" target="_blank" rel="noopener">${{m.title}}</a>
           </div>`).join('') + `</div>`

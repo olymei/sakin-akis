@@ -42,8 +42,10 @@ Bu ayrım bilinçli bir tasarım kararı — yerelde hız, CI'da tam özellik.
 
 ## Kaynaklar (`SOURCES` listesi)
 
-İki kategori: `"haber"` ve `"oyun"`. Her kaynağın `id`, `name`, `color` (hex, marka rengi),
-`category`, `rss` (URL) alanları var.
+İki kategori: `"haber"` ve `"oyun"`. Her kaynağın `id`, `name`, `category`, `rss` (URL)
+alanları var. Eskiden bir de `color` (hex, marka rengi) alanı vardı -- kaynak
+toggle'larındaki, kart üstündeki ve kümedeki swatch noktalarında kullanılıyordu; kullanıcı
+"gerek yok" deyip kaldırttı, aynı anda site tamamen siyah-beyaza geçti (bkz. "Tema").
 
 **Haberler (22):** Reuters, AP, BBC (EN), BBC Türkçe, Cumhuriyet, Bianet, TRT Haber,
 Anadolu Ajansı, Sözcü, Habertürk, NTV, Hürriyet, Sabah, Halk TV, T24, DW Türkçe,
@@ -156,8 +158,11 @@ Prompt: her grup için tarafsız, 18 kelimeyi geçmeyen tek cümle iste, JSON ar
    `originalimage.source` (TAM çözünürlük) tercih ediliyor. Bulunamazsa `opensearch` API'siyle
    bulanık arama denenir. Oyun kaynakları için kaynak başına TEK sorgu (`GAME_WIKI_TITLES`
    ile cache'lenir, makale başına değil).
-3. **Placeholder monogram** (`make_placeholder_image`) — SVG, kaynağın rengi + baş harfi,
-   kart oranına (2.2:1) eşit viewBox, harf üstte/soluk (metnin oturacağı alt kısmı boş bırakır)
+3. **Placeholder monogram** (`make_placeholder_image`) — SVG, sabit koyu gri zemin (`#2B2B2B`)
+   + baş harfi (kaynak rengi YOK, site siyah-beyaza geçtiğinde kaldırıldı), kart oranına
+   (2.2:1) eşit viewBox, harf üstte/soluk (metnin oturacağı alt kısmı boş bırakır). Sabit gri
+   kullanılıyor çünkü bu SVG data URI olarak gömülü, sayfanın light/dark CSS değişkenlerine
+   erişemiyor.
 
 ⚠️ **Denenip vazgeçilen yöntem:** `og:image` meta etiketini makale sayfasından kazımak —
 hem yavaştı hem güvenilmez çıktı (Google News ara yönlendirme sayfaları yüzünden). Bu yola
@@ -220,6 +225,15 @@ tabanlı filtre mekanizmasını kullanır, ayrı bir sistem değil).
   "önemli" kutusundaki kelime eşleşmesi).
 - **Dark mode varsayılan**, `:root` dark değerleri tutuyor, `html.light` class'ı override
   ediyor. Dil düğmesinin yanında ☀/☾ ile geçiş, localStorage'da kalıcı.
+- **Tema tamamen siyah-beyaz (monokrom).** Kullanıcı kaynak renklerini kaldırttıktan hemen
+  sonra tüm temayı da siyah-beyaza çevirtti. `:root` (dark): `--paper:#000000` (saf siyah,
+  "black is heavier" dendi), `--ink:#FFFFFF`. `html.light`: `--paper:#FFFFFF`,
+  `--ink:#000000` — dark modun tam tersi. `--accent` artık ayrı bir renk değil, `--ink` ile
+  aynı deger (dark'ta beyaz, light'ta siyah) — eskiden turuncu/kiremit tonuydu. Kart üstü
+  overlay gradyanı ve metni de (`--paper`/`--ink`'ten bağımsız, sabit hardcode) saf
+  siyah/beyaza çevrildi (`rgba(0,0,0,...)` / `rgba(255,255,255,...)`), favicon da aynı
+  şekilde. Yeni bir renk/hex eklerken bu kısıtı unutma — hiçbir yerde renkli (hue'lu) bir
+  ton olmamalı, sadece siyah/beyaz/gri.
 - **Türkçe karakterler:** Tüm arayüz gerçek Türkçe alfabeyle (ş,ı,ğ,ü,ö,ç) — "Sakin Akis"
   değil "Sakin Akış" gibi. Yeni metin eklerken buna dikkat et.
 - Tarih gösterimi: hem göreceli ("3sa", "2g") hem mutlak ("14 Eyl") birlikte gösteriliyor.
