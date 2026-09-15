@@ -895,6 +895,7 @@ const I18N = {{
     sourcesToggle: n => `${{n}} kaynakta daha oku`,
     tabNews: "Haberler",
     tabGames: "Oyunlar",
+    oyunOtherLabel: "Diğer",
     markSeen: "gördüm olarak işaretle",
     markUnseen: "tekrar yukarı çıkar",
     prevPage: "Önceki",
@@ -925,6 +926,7 @@ const I18N = {{
     sourcesToggle: n => `read in ${{n}} more sources`,
     tabNews: "News",
     tabGames: "Games",
+    oyunOtherLabel: "Other",
     markSeen: "mark as seen",
     markUnseen: "move back to top",
     prevPage: "Previous",
@@ -970,10 +972,12 @@ function buildTabs(){{
 // Oyunlar sekmesinde 11 ayri kaynak yerine 3 grup gosterilir -- kullanici
 // tek tek oyun degil, "nereden" (Riot / Steam / digeri) diye dusunuyor.
 // Grup butonuna tiklamak, o gruptaki TUM sourceId'leri birlikte ac/kapat.
+// "Riot Games" ve "Steam" marka isimleri, dile gore degismez; "Diger" ise
+// L.oyunOtherLabel ile cevriliyor (asagida buildSourceToggles icinde).
 const OYUN_SOURCE_GROUPS = [
   {{ id: 'riot', label: 'Riot Games', color: '#D32936', sourceIds: ['valorant', 'lol', 'tft'] }},
   {{ id: 'steam', label: 'Steam', color: '#66C0F4', sourceIds: ['deadlock', 'bodycam', 'zomboid', 'r6siege', 'cs2', 'dota2'] }},
-  {{ id: 'other', label: 'Diğer', color: '#8A8570', sourceIds: ['minecraft', 'game_news'] }},
+  {{ id: 'other', label: null, color: '#8A8570', sourceIds: ['minecraft', 'game_news'] }},
 ];
 
 function buildSourceToggles(){{
@@ -996,7 +1000,8 @@ function buildSourceToggles(){{
       const allActive = g.sourceIds.every(id => activeSources.has(id));
       const btn = document.createElement('button');
       btn.className = 'src-toggle' + (allActive ? ' active' : '');
-      btn.innerHTML = `<span class="swatch" style="background:${{g.color}}"></span><span>${{g.label}}</span>`;
+      const label = g.label || L.oyunOtherLabel;
+      btn.innerHTML = `<span class="swatch" style="background:${{g.color}}"></span><span>${{label}}</span>`;
       btn.addEventListener('click', () => {{
         if (allActive) g.sourceIds.forEach(id => activeSources.delete(id));
         else g.sourceIds.forEach(id => activeSources.add(id));
