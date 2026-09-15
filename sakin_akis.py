@@ -158,6 +158,12 @@ WIKIPEDIA_HEADERS = {
 # daha net bir versiyon istiyoruz.
 THUMBNAIL_TARGET_WIDTH = 1400
 
+# Kart 2.2:1 oranla ve en fazla 640px genislikte gosteriliyor. Bundan daha
+# dar bir gorsel (orn. dikey portre fotograflar) object-fit:cover ile
+# buyutulup bulaniklasir -- bu yuzden yeterince genis olmayan gorselleri
+# reddedip bir sonraki adaya (ya da placeholder'a) dusuyoruz.
+MIN_IMAGE_WIDTH = 500
+
 
 def upsize_thumbnail_url(url):
     if not url:
@@ -165,12 +171,24 @@ def upsize_thumbnail_url(url):
     return re.sub(r"/(\d+)px-", f"/{THUMBNAIL_TARGET_WIDTH}px-", url)
 
 
+# BBC'nin ichef CDN'i, URL yolundaki genislik degerini degistirerek ayni
+# gorselin daha buyuk bir versiyonunu verir (orn. ".../standard/240/..." ->
+# ".../standard/976/..."). RSS feed'i varsayilan olarak kucuk (240px) bir
+# versiyon veriyor, kartta (max ~640px genislik) bulaniklasiyordu.
+def upsize_bbc_thumbnail_url(url):
+    if not url or "ichef.bbci.co.uk" not in url:
+        return url
+    return re.sub(r"/standard/\d+/", "/standard/976/", url)
+
+
 def fetch_wikipedia_thumbnail(title, lang="tr"):
     """Wikipedia'nin ucretsiz, anahtar gerektirmeyen ozet API'sinden bir
     sayfanin kapak/tanitim gorselini ceker. Once ORIJINAL (tam cozunurluklu)
     gorseli tercih ediyoruz -- URL buyutme numarasindan (regex ile "NNNpx-"
     degistirmek) cok daha guvenilir, cunku API bize dogrudan orijinal
-    dosyanin linkini veriyor. Sayfa yoksa veya gorseli yoksa None doner."""
+    dosyanin linkini veriyor. Cok dar (MIN_IMAGE_WIDTH altinda) gorseller
+    kartta bulaniklastigi icin reddedilir. Sayfa yoksa veya uygun gorseli
+    yoksa None doner."""
     try:
         safe_title = urllib.parse.quote(title.replace(" ", "_"))
         url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{safe_title}"
@@ -178,11 +196,13 @@ def fetch_wikipedia_thumbnail(title, lang="tr"):
         ctx = ssl.create_default_context()
         with urllib.request.urlopen(req, timeout=6, context=ctx) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        original = data.get("originalimage", {}).get("source")
-        if original:
-            return original
-        thumb = data.get("thumbnail", {}).get("source")
-        return upsize_thumbnail_url(thumb)
+        orig_info = data.get("originalimage") or {}
+        if orig_info.get("source") and orig_info.get("width", 0) >= MIN_IMAGE_WIDTH:
+            return orig_info["source"]
+        thumb_info = data.get("thumbnail") or {}
+        if thumb_info.get("source") and thumb_info.get("width", 0) >= MIN_IMAGE_WIDTH:
+            return upsize_thumbnail_url(thumb_info["source"])
+        return None
     except Exception:
         return None
 
@@ -356,6 +376,8 @@ def parse_items(xml_bytes, src):
             content_el = node.find("content:encoded", ns)
             if content_el is not None:
                 image = find_image_in_html(content_el.text)
+
+        image = upsize_bbc_thumbnail_url(image)
 
         if title and link and dt:
             items.append({
