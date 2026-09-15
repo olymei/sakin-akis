@@ -977,13 +977,6 @@ function buildSourceToggles(){{
   const L = I18N[lang];
   const wrapEl = document.getElementById('sourcesLabel');
   const el = document.getElementById('sourceToggles');
-  // Oyunlar sekmesinde tek tek kaynak secimi yok -- hepsi dogrudan gosterilir
-  if (currentTab === 'oyun'){{
-    wrapEl.style.display = 'none';
-    el.style.display = 'none';
-    el.innerHTML = '';
-    return;
-  }}
   wrapEl.style.display = '';
   const tabSources = SOURCES_META.filter(s => s.category === currentTab);
   const activeCount = tabSources.filter(s => activeSources.has(s.id)).length;
@@ -1198,7 +1191,7 @@ function render(){{
   const importantWords = expandWords(importantRaw);
   let filtered = DATA.filter(it =>
     it.category === currentTab &&
-    (currentTab === 'oyun' || activeSources.has(it.sourceId)) &&
+    activeSources.has(it.sourceId) &&
     matchesFilter(it.title, hideWords, onlyWords)
   );
 

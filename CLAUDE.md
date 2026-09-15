@@ -166,9 +166,12 @@ canvas okuma çalışmaz.
 sekmeye göre dinamik key üreten `hideStorageKey()` fonksiyonlarına bak). Bunu SEKME
 BAĞIMSIZ tutmayı unutma, bir önceki hata buydu (kutular paylaşılıyordu).
 
-**Oyunlar sekmesinde kaynak toggle'ı YOK** — hepsi otomatik gösterilir, kullanıcı özellikle
-"kategoriler kaldırılsın, hepsi gösterilsin" dedi. Haberler sekmesinde kaynak listesi var
-ama varsayılan KAPALI (genişlet düğmesiyle açılıyor, `sourcesExpanded` state).
+**Oyunlar sekmesinde de kaynak toggle'ı VAR** (Haberler ile aynı mekanizma,
+`buildSourceToggles` her iki sekmede de çalışır). Başta kaldırılmıştı ("kategoriler
+kaldırılsın, hepsi gösterilsin") ama Riot Games sorguları patch notes'a daraltılınca
+(bkz. yukarısı) bu kaynaklar 879 oyun haberi içinde ~23 taneye düşüp kayboldu -- kullanıcı
+bunları bulabilmek için toggle'ı geri istedi. Varsayılan KAPALI (genişlet düğmesiyle
+açılıyor, `sourcesExpanded` state), her iki sekmede ortak.
 
 **Konu chip'leri (`TOPIC_SYNONYMS`, `TOPIC_KEYS_BY_TAB`):** Sekmeye göre farklı chip seti.
 - Haberler: Futbol, Spor, Ekonomi, Siyaset, Magazin, Teknoloji
