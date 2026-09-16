@@ -5,10 +5,18 @@ Bu dosya, Claude Code'un bu proje üzerinde çalışırken ihtiyaç duyacağı b
 ## Proje nedir, neden var
 
 Kullanıcı X (Twitter)'ı taraflı/anlamsız/toxic ragebait içerik yüzünden kullanmayı bıraktı ve
-kendi haber+oyun güncellemesi takip aracını yaptı: **Sakin Akış**. Amaç: algoritma yok,
-reklam yok, kronolojik sıra, kullanıcı kontrolünde filtreleme. "Sakin" isim/marka kimliği
-ciddiye alınmalı — her yeni özellik bu sakinlik felsefesine (gürültü azaltma, kullanıcı
-kontrolü, şeffaflık) uygun olmalı.
+kendi haber takip aracını yaptı: **Sakin Akış**. Amaç: algoritma yok, reklam yok, kronolojik
+sıra, kullanıcı kontrolünde filtreleme. "Sakin" isim/marka kimliği ciddiye alınmalı — her
+yeni özellik bu sakinlik felsefesine (gürültü azaltma, kullanıcı kontrolü, şeffaflık) uygun
+olmalı.
+
+⚠️ **Tek sekme, tek akış.** Başta "Haberler" / "Oyunlar" diye iki ayrı sekme vardı (oyun
+sekmesinde tek tek oyunların yama notları takip ediliyordu). Kullanıcı sonradan Oyunlar
+sekmesini TAMAMEN kaldırttı: yama notu takibi bitti, bunun yerine büyük oyun sektörü
+haberleri (büyük oyun çıkışları, fragmanlar, Game Awards gibi büyük etkinlikler) normal
+haber akışına bir KAYNAK olarak karıştı (bkz. "Oyun Dünyası" aşağıda). Artık `category`
+alanı her zaman `"haber"` -- `"oyun"` kategorisi yok, sekme UI'ı yok, `currentTab` sabit
+`"haber"`.
 
 **Canlı site:** https://olymei.github.io/sakin-akis/
 **Repo:** github.com/olymei/sakin-akis (public)
@@ -42,35 +50,41 @@ Bu ayrım bilinçli bir tasarım kararı — yerelde hız, CI'da tam özellik.
 
 ## Kaynaklar (`SOURCES` listesi)
 
-İki kategori: `"haber"` ve `"oyun"`. Her kaynağın `id`, `name`, `category`, `rss` (URL)
-alanları var. Eskiden bir de `color` (hex, marka rengi) alanı vardı -- kaynak
-toggle'larındaki, kart üstündeki ve kümedeki swatch noktalarında kullanılıyordu; kullanıcı
-"gerek yok" deyip kaldırttı, aynı anda site tamamen siyah-beyaza geçti (bkz. "Tema").
+Tek kategori: her kaynağın `category` alanı hep `"haber"`. Her kaynağın `id`, `name`,
+`category`, `lang` (`"tr"`/`"en"`, kaynak listesinde "Türkçe kaynaklar"/"Yabancı kaynaklar"
+bölmesi için), `rss` (URL) alanları var. Eskiden bir de `color` (hex, marka rengi) alanı
+vardı -- kaynak toggle'larındaki, kart üstündeki ve kümedeki swatch noktalarında
+kullanılıyordu; kullanıcı "gerek yok" deyip kaldırttı, aynı anda site tamamen siyah-beyaza
+geçti (bkz. "Tema").
 
-**Haberler (23):** Reuters, AP, BBC (EN), BBC Türkçe, Cumhuriyet, Bianet, TRT Haber,
+**Kaynaklar (24):** Reuters, AP, BBC (EN), BBC Türkçe, Cumhuriyet, Bianet, TRT Haber,
 Anadolu Ajansı, Sözcü, Habertürk, NTV, Hürriyet, Sabah, Halk TV, T24, DW Türkçe,
-Al Jazeera English, The Guardian, Euronews, NPR, CNN Türk, Yeni Şafak, The Economist —
-bilinçli olarak siyasi yelpazede dengeli (devlet: TRT/AA; pro-hükümet: Sabah/Habertürk/
-Yeni Şafak/CNN Türk; muhalefet: Sözcü/Cumhuriyet/Halk TV; bağımsız: Bianet/T24/Hürriyet;
-uluslararası: Reuters/AP/BBC/Al Jazeera/Guardian/Euronews/NPR/DW/Economist), kullanıcı
-açıkça bunu istedi. 9'dan 22'ye genişletildi -- kullanıcı "büyük kaynakların hepsi olsun"
-dedi, TR + İngilizce/uluslararası karışımı özellikle istendi. Sonra The Economist tek
-başına eklendi (kullanıcı "bu son olsun" dedi -- 23'te durulacak, bilinçli bir sınır:
-daha fazlası kaynak listesinin kendisini gürültüye çevirir).
+Al Jazeera English, The Guardian, Euronews, NPR, CNN Türk, Yeni Şafak, The Economist,
+**Oyun Dünyası** — ilk 23'ü bilinçli olarak siyasi yelpazede dengeli (devlet: TRT/AA;
+pro-hükümet: Sabah/Habertürk/Yeni Şafak/CNN Türk; muhalefet: Sözcü/Cumhuriyet/Halk TV;
+bağımsız: Bianet/T24/Hürriyet; uluslararası: Reuters/AP/BBC/Al Jazeera/Guardian/Euronews/
+NPR/DW/Economist), kullanıcı açıkça bunu istedi. 9'dan 22'ye genişletildi -- kullanıcı
+"büyük kaynakların hepsi olsun" dedi, TR + İngilizce/uluslararası karışımı özellikle
+istendi. Sonra The Economist eklendi (23'te durulacaktı, bilinçli bir sınır), sonra
+Oyunlar sekmesi kaldırılınca yerine "Oyun Dünyası" (24.) eklendi.
 
-**Oyunlar (11):** Deadlock, Bodycam, Project Zomboid, Minecraft, TFT, Valorant,
-League of Legends, Rainbow Six Siege, Counter-Strike 2, Dota 2, Büyük Oyun Haberleri (genel)
+**"Oyun Dünyası"** (`id: oyun_dunyasi`, `lang: en`) — Oyunlar sekmesi kaldırılınca eklendi.
+Eski Riot Games/Steam yama notu takibinin YERİNE GEÇMİYOR (o tamamen bitti) -- bunun yerine
+büyük oyun sektörü haberlerini (büyük oyun çıkışları, yeni fragmanlar, Game Awards gibi
+büyük etkinlikler) normal Haberler akışına bir kaynak olarak katıyor. Sorgu:
+`("official trailer" OR "release date" OR "game awards" OR "goty") game -"Hunger Games"
+when:4d`. Canlı test edilerek kalibre edildi (birkaç sürüm denendi -- ilk hali spor/film
+gürültüsü içeriyordu, `-"Hunger Games"` filmi dışlamak icin eklendi çünkü başlığında "Games"
+geçiyor ve genel "trailer" sorgusuna yanlışlıkla giriyordu).
 
 **RSS kaynak stratejisi:**
-- Steam'de olan oyunlar (Deadlock, Bodycam, Zomboid, R6 Siege, CS2, Dota2) →
-  `https://store.steampowered.com/feeds/news/app/{appid}/` — resmi ve güvenilir
 - Kendi RSS'i olan (BBC, Habertürk, NTV, Hürriyet, Sabah, Halk TV, Al Jazeera English,
   The Guardian, Euronews, NPR, CNN Türk, Yeni Şafak) → direkt kullanılıyor
 - Geri kalan HERKES (Reuters, AP, Cumhuriyet, Bianet, TRT, AA, Sözcü, T24, DW Türkçe,
-  Minecraft, TFT, Valorant, LoL, genel oyun haberleri) → Google News search RSS
-  (`news.google.com/rss/search?q=...`) çünkü ya resmi RSS'leri yok ya da denendi/kırık çıktı
-  (T24'ün `/rss` yolu 404 dönüyor; DW Türkçe'nin resmi feed'i RSS 1.0/RDF formatında,
-  parser'ın desteklemediği format — Google News fallback'e düşürüldü)
+  Oyun Dünyası) → Google News search RSS (`news.google.com/rss/search?q=...`) çünkü ya
+  resmi RSS'leri yok ya da denendi/kırık çıktı (T24'ün `/rss` yolu 404 dönüyor; DW
+  Türkçe'nin resmi feed'i RSS 1.0/RDF formatında, parser'ın desteklemediği format —
+  Google News fallback'e düşürüldü)
 
 ⚠️ **Atom format bug'ı (NTV eklenirken bulundu):** `parse_items` içinde Atom dalı
 (`is_atom`), `<title>` etiketini namespace'siz arıyordu (`node.find("title")`) ama Atom'da
@@ -94,17 +108,14 @@ kapsama alaniyordu). Yeni bir kaynak eklerken gorsel oranı dusukse (Wikipedia b
 ~%8-14, bkz. Cumhuriyet/Bianet/TRT/AA/Sözcü) ama kaynak KENDI RSS'ini kullaniyorsa (Google
 News degil), feed'in ham XML'ini kontrol et -- standart-disi bir gorsel alani olabilir.
 
-**Riot Games (Valorant/LoL/TFT) — patch notes'a özel sorgu:** İlk hali genel oyun adı
-sorgusuydu ("Valorant", "League of Legends" vb.) ve bu sadece esports/kozmetik/roster
-haberleri döndürüyordu, gerçek yama notu HİÇ gelmiyordu (kullanıcı bunu fark edip bildirdi).
-Çözüm: sorguyu `"<Oyun> Patch Notes" site:<resmi-site> -Archive when:Nd` şekline daraltmak
-(Valorant: `site:playvalorant.com`, `when:30d`; LoL: `site:leagueoflegends.com`,
-`-"Wild Rift"` ile kardeş oyunu eleme, `when:14d`; TFT: site kısıtı olmadan `"patch notes"`
-ifadesi yeterli oldu, `when:14d`). `when` penceresi her oyunun yama sıklığına gore ayarlandı
-(LoL/TFT ~2 haftada bir, Valorant ~6 haftada bir). Gerçek Google News sorgularıyla
-(tarayıcıda canlı test edilerek) doğrulandı -- artık en güncel yama notu ilk sıralarda
-geliyor. Hâlâ biraz gürültü var (wiki sayfaları, ilgili haber analizleri) ama kabul
-edilebilir seviyede.
+⚠️ **Riot Games/Steam yama notu takibi (Valorant/LoL/TFT/Deadlock/Bodycam/Zomboid/R6/CS2/
+Dota2/Minecraft) TAMAMEN KALDIRILDI.** Bir süre per-oyun patch notes takibi vardı (özel
+Google News sorguları, `GAME_WIKI_TITLES` ile Wikipedia kapak görselleri, `OYUN_SOURCE_GROUPS`
+ile "Riot Games"/"Steam"/"Diğer" gruplu kaynak toggle'ları) ama kullanıcı Oyunlar sekmesini
+tamamen kaldırttı: "yama notu artık olmayacak", yerine genel oyun sektörü haberi geldi (bkz.
+yukarıda "Oyun Dünyası"). Eğer eski bir commit'te `GAME_WIKI_TITLES`, `OYUN_SOURCE_GROUPS`,
+`isSimilarTitle`'ın oyun-özel kullanımı gibi şeyler görürsen, bunlar kasıtlı olarak silindi
+-- geri getirme, kullanıcı bunu istemiyor.
 
 ## Haber temizleme ve kümeleme — iki farklı katman
 
@@ -185,9 +196,9 @@ temizleniyor). Bu kural hem aday üretiminde hem AI promptunda geçerli.
 `extractProperNouns` silindi -- JS artık kümeleme mantığı taşımıyor, "ikisini birden
 güncellemeyi unutma" derdi ortadan kalktı).
 
-⚠️ **Oyunlar sekmesinde kümeleme tamamen kapalı** — kullanıcı özellikle istedi. Python
-tarafında da sadece `category == "haber"` ogeleri aday kümelemeye sokuluyor (oyun ogeleri
-hiç AI'a gönderilmiyor, gereksiz maliyet yok).
+Not: `category == "haber"` filtresi hâlâ Python'da duruyor (`haber_items = [...]`) ama
+artık no-op -- tüm SOURCES ögeleri zaten `"haber"`, Oyunlar kategorisi silindiğinden beri
+başka değer yok.
 
 ## AI özet + kümeleme doğrulama (Claude Haiku)
 
@@ -207,12 +218,13 @@ yukarıdaki "Çapraz kaynak kümeleme" bölümü).
 
 Üç katmanlı sistem, öncelik sırasıyla:
 
-1. **RSS'in kendi verdiği görsel** (BBC, Steam feed'leri gerçek görsel veriyor)
+1. **RSS'in kendi verdiği görsel** (BBC, Habertürk, NTV, Hürriyet vb. kendi RSS'i olan
+   kaynaklar gerçek görsel veriyor -- bkz. "Atom format bug'ı" notları)
 2. **Wikipedia REST API** (`fetch_entity_image` / `fetch_wikipedia_thumbnail`) — ücretsiz,
    anahtarsız. Başlıktaki özel isimlerden (bigram öncelikli) Wikipedia'da arama yapılıyor,
    `originalimage.source` (TAM çözünürlük) tercih ediliyor. Bulunamazsa `opensearch` API'siyle
-   bulanık arama denenir. Oyun kaynakları için kaynak başına TEK sorgu (`GAME_WIKI_TITLES`
-   ile cache'lenir, makale başına değil).
+   bulanık arama denenir. (Eskiden oyun kaynakları için kaynak başına TEK sorguyla
+   cache'lenen `GAME_WIKI_TITLES` vardı -- Oyunlar sekmesiyle birlikte silindi.)
 3. **Placeholder monogram** (`make_placeholder_image`) — SVG, sabit koyu gri zemin (`#2B2B2B`)
    + baş harfi (kaynak rengi YOK, site siyah-beyaza geçtiğinde kaldırıldı), kart oranına
    (2.2:1) eşit viewBox, harf üstte/soluk (metnin oturacağı alt kısmı boş bırakır). Sabit gri
@@ -251,49 +263,44 @@ verir) sessizce varsayılana (koyu zemin varsayımı, açık metin) düşülüyo
 hiç etkilemiyor. Yeni bir görsel-ilişkili degisiklik yaparken görünen `<img>`'e ASLA
 `crossorigin` ekleme.
 
-## Sekmeler ve state yönetimi
+## Sekme yok, tek akış, state yönetimi
 
-**"Haberler" / "Oyunlar"** iki bağımsız sekme. Her ikisi de kendi filtre state'ine sahip
-(ayrı localStorage anahtarları: `sakinakis_hide_haber` vs `sakinakis_hide_oyun` gibi —
-sekmeye göre dinamik key üreten `hideStorageKey()` fonksiyonlarına bak). Bunu SEKME
-BAĞIMSIZ tutmayı unutma, bir önceki hata buydu (kutular paylaşılıyordu).
+⚠️ **Sekme UI'ı tamamen kaldırıldı.** Eskiden "Haberler" / "Oyunlar" iki bağımsız sekme
+vardı (`buildTabs()`, `.tabs`/`.tab-btn` CSS, `<div class="tabs" id="mainTabs">`, sekmeye
+göre gruplu kaynak toggle'ı). Oyunlar sekmesi kullanıcı isteğiyle tamamen kaldırılınca artık
+tek sekme kalmadığı için sekme değiştirme UI'ının kendisi de anlamsızlaşıp silindi.
+`currentTab` değişkeni JS'de hâlâ var (kod tabanında minimum değişiklik için) ama artık
+SABİT `"haber"` -- hiçbir yerde değişmiyor, `buildTabs()`/`loadFilterInputsForTab()`/
+`sakinakis_tab` localStorage anahtarı gibi onu değiştiren her şey silindi. Bu yüzden
+`hideStorageKey()` gibi fonksiyonlar hâlâ `currentTab`'a göre key üretiyor ama pratikte
+hep aynı sabit key'i döndürüyorlar (`sakinakis_hide_haber` vb.) -- kasıtlı, kullanıcının
+eski localStorage verisiyle uyumluluk için böyle bırakıldı, silmeye gerek yok.
 
-**Oyunlar sekmesinde de kaynak toggle'ı VAR ama Haberler'den FARKLI** -- 11 ayrı oyun
-yerine 3 GRUP butonu (`OYUN_SOURCE_GROUPS`): "Riot Games" (valorant/lol/tft), "Steam"
-(deadlock/bodycam/zomboid/r6siege/cs2/dota2), "Diğer" (minecraft/game_news). Bir gruba
-tıklamak o gruptaki TÜM sourceId'leri birlikte `activeSources`'a ekler/çıkarır -- alttaki
-filtre mekanizması (`activeSources.has(it.sourceId)`) Haberler ile birebir aynı, sadece
-Oyunlar'da UI'da gruplu gösteriliyor. Başta (tek tek kaynaklar da dahil) tamamen
-kaldırılmıştı ("kategoriler kaldırılsın, hepsi gösterilsin"), sonra Riot Games sorguları
-patch notes'a daraltılınca (bkz. yukarısı) bu kaynaklar 879 oyun haberi içinde ~23 taneye
-düşüp kayboldu -- kullanıcı önce Haberler'deki gibi tek tek kaynak listesi istedi, sonra
-11 buton fazla geldi, 3 gruba indirgendi. Varsayılan KAPALI (genişlet düğmesiyle açılıyor,
-`sourcesExpanded` state, her iki sekmede ortak).
-
-**Haberler sekmesinde kaynak listesi de ikiye bölünüyor:** "Türkçe kaynaklar" / "Yabancı
-kaynaklar" (`L.sourcesLangTr` / `L.sourcesLangForeign`) alt başlıkları altında, ama
-Oyunlar'ın aksine kaynaklar GRUPLANMIYOR -- her kaynak hâlâ kendi ayrı toggle butonu,
-sadece iki başlık altında sıralanıyor (tek tek acma/kapama kontrolü korunuyor). Her
+**Kaynak listesi ikiye bölünüyor:** "Türkçe kaynaklar" / "Yabancı kaynaklar"
+(`L.sourcesLangTr` / `L.sourcesLangForeign`) alt başlıkları altında, her kaynak kendi ayrı
+toggle butonu (gruplanmıyor -- eski Oyunlar sekmesinin 3-grup-buton yaklaşımı
+(`OYUN_SOURCE_GROUPS`: "Riot Games"/"Steam"/"Diğer") o sekmeyle birlikte silindi). Her
 kaynağın Python tarafında `SOURCES` içinde `"lang": "tr"` veya `"lang": "en"` alanı var
-(`sources_meta` ile JS'e geçiyor); `buildSourceToggles` bu alana göre iki grup render
-ediyor (CSS: `.sources-subgroup-label{{flex-basis:100%}}` ile ayni flex-wrap konteyner
-icinde satir kaydiriyor, ekstra wrapper div yok). 23 kaynaktan 15'i Türkçe (BBC Türkçe ve
-DW Türkçe dahil -- bunlar yabancı kuruluşların Türkçe yayını ama dil/hedef kitleye göre
-Türkçe grubuna kondu), 8'i yabancı (Reuters, AP, BBC EN, Al Jazeera English, Guardian,
-Euronews, NPR, The Economist).
+(`sources_meta` ile JS'e geçiyor); `buildSourceToggles` bu alana göre iki grup render ediyor
+(CSS: `.sources-subgroup-label{{flex-basis:100%}}` ile ayni flex-wrap konteyner icinde satir
+kaydiriyor, ekstra wrapper div yok). Varsayılan KAPALI (genişlet düğmesiyle açılıyor,
+`sourcesExpanded` state). 24 kaynaktan 15'i Türkçe (BBC Türkçe ve DW Türkçe dahil -- bunlar
+yabancı kuruluşların Türkçe yayını ama dil/hedef kitleye göre Türkçe grubuna kondu), 9'u
+yabancı (Reuters, AP, BBC EN, Al Jazeera English, Guardian, Euronews, NPR, The Economist,
+Oyun Dünyası).
 
-**Konu chip'leri (`TOPIC_SYNONYMS`, `TOPIC_KEYS_BY_TAB`):** Sekmeye göre farklı chip seti.
-- Haberler: Futbol, Spor, Ekonomi, Siyaset, Magazin, Teknoloji
-- Oyunlar: Güncelleme Notları (`patchnotes`), Diğer (`digeroyun` — turnuva+yeni içerik+indirim
-  kelimelerinin birleşimi)
+**Konu chip'leri (`TOPIC_SYNONYMS`, `TOPIC_KEYS_BY_TAB`):** Futbol, Spor, Ekonomi, Siyaset,
+Magazin, Teknoloji. (Eskiden Oyunlar sekmesine özel "Güncelleme Notları"/`patchnotes` ve
+"Diğer"/`digeroyun` chip'leri de vardı, sekmeyle birlikte silindi.)
 
 Chip'e tıklamak, o anahtar kelimeyi gizle/sadece-göster/önemli kutusuna yazar (mevcut metin
 tabanlı filtre mekanizmasını kullanır, ayrı bir sistem değil).
 
 ## localStorage anahtarları (hepsi `sakinakis_` önekli)
 
-`lang`, `theme`, `hide_{tab}`, `only_{tab}`, `important_{tab}`, `sources`, `sortmode`, `tab`,
-`seen`
+`lang`, `theme`, `hide_haber` (fonksiyon adı hâlâ `hideStorageKey()`, `{{tab}}` yer tutucusu
+artık hep `haber`), `only_haber`, `important_haber`, `sources`, `sortmode`, `seen`.
+`tab` artık YOK (sekme kaldırılınca silindi).
 
 ## Diğer önemli özellikler
 
@@ -379,5 +386,9 @@ repoyu klonlayıp doğrudan commit/push yapılabilir hale gelecek.
   placeholder'a düşer
 - Canvas brightness analizi teorik olarak CORS engeline takılabilir (Wikipedia genelde
   izin veriyor ama garanti değil)
-- `game_news` (genel oyun haberleri) kaynağı Google News'in geniş bir sorgusu, gürültülü
-  olabilir, zamanla daraltma gerekebilir
+- "Oyun Dünyası" kaynağı Google News'in bir sorgusu, canlıda tek seferlik kontrol edildi
+  (temiz çıktı, bkz. yukarıda) ama uzun vadede gürültü artarsa sorgu tekrar ayarlanabilir
+- AI kümeleme doğrulaması (`validate_and_summarize_clusters_with_ai`) ~25'lik batch'ler
+  halinde çalışıyor ama ara sıra tek bir batch başarısız olabiliyor (canlıda görüldü, 9
+  batch'ten 1'i) -- kullanıcı birkaç build boyunca izlemeyi istedi, düzeni bir kalıp
+  oluşturuyorsa (sürekli aynı batch pozisyonu vb.) daha derin araştırma gerekebilir

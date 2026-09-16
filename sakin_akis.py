@@ -75,28 +75,8 @@ SOURCES = [
      "rss": "https://www.yenisafak.com/rss?xml=gundem"},
     {"id": "economist", "name": "The Economist", "category": "haber", "lang": "en",
      "rss": "https://www.economist.com/international/rss.xml"},
-    {"id": "deadlock", "name": "Deadlock", "category": "oyun",
-     "rss": "https://store.steampowered.com/feeds/news/app/1422450/?cc=us&l=english"},
-    {"id": "bodycam", "name": "Bodycam", "category": "oyun",
-     "rss": "https://store.steampowered.com/feeds/news/app/2406770/?cc=us&l=english"},
-    {"id": "zomboid", "name": "Project Zomboid", "category": "oyun",
-     "rss": "https://store.steampowered.com/feeds/news/app/108600/?cc=us&l=english"},
-    {"id": "minecraft", "name": "Minecraft", "category": "oyun",
-     "rss": "https://news.google.com/rss/search?q=minecraft+update+when:7d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "tft", "name": "TFT", "category": "oyun",
-     "rss": "https://news.google.com/rss/search?q=%22Teamfight+Tactics%22+%22patch+notes%22+when:14d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "valorant", "name": "Valorant", "category": "oyun",
-     "rss": "https://news.google.com/rss/search?q=%22VALORANT+Patch+Notes%22+site:playvalorant.com+-Archive+when:30d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "lol", "name": "League of Legends", "category": "oyun",
-     "rss": "https://news.google.com/rss/search?q=%22League+of+Legends%22+%22patch+notes%22+site:leagueoflegends.com+-%22Wild+Rift%22+when:14d&hl=en-US&gl=US&ceid=US:en"},
-    {"id": "r6siege", "name": "Rainbow Six Siege", "category": "oyun",
-     "rss": "https://store.steampowered.com/feeds/news/app/359550/?cc=us&l=english"},
-    {"id": "cs2", "name": "Counter-Strike 2", "category": "oyun",
-     "rss": "https://store.steampowered.com/feeds/news/app/730/?cc=us&l=english"},
-    {"id": "dota2", "name": "Dota 2", "category": "oyun",
-     "rss": "https://store.steampowered.com/feeds/news/app/570/?cc=us&l=english"},
-    {"id": "game_news", "name": "Buyuk Oyun Haberleri", "category": "oyun",
-     "rss": "https://news.google.com/rss/search?q=(trailer+OR+announcement+OR+reveal)+game+when:3d&hl=en-US&gl=US&ceid=US:en"},
+    {"id": "oyun_dunyasi", "name": "Oyun Dünyası", "category": "haber", "lang": "en",
+     "rss": "https://news.google.com/rss/search?q=(%22official+trailer%22+OR+%22release+date%22+OR+%22game+awards%22+OR+%22goty%22)+game+-%22Hunger+Games%22+when:4d&hl=en-US&gl=US&ceid=US:en"},
 ]
 
 HEADERS = {
@@ -276,31 +256,6 @@ def fetch_entity_image(title):
                 if img:
                     return img
     return None
-
-
-# Oyun kaynaklari sabit bir konuya (oyunun kendisine) karsilik geldigi icin,
-# her kaynak icin TEK BIR Wikipedia sorgusuyla (cache'lenerek) kapak gorseli
-# alinip o kaynagin tum haberlerinde kullanilabilir -- makale basina sorgu
-# gerekmez, cok daha hizli.
-GAME_WIKI_TITLES = {
-    "deadlock": "Deadlock (video game)",
-    "bodycam": "Bodycam (video game)",
-    "zomboid": "Project Zomboid",
-    "minecraft": "Minecraft",
-    "tft": "Teamfight Tactics",
-    "valorant": "Valorant",
-    "lol": "League of Legends",
-    "r6siege": "Rainbow Six Siege",
-    "cs2": "Counter-Strike 2",
-    "dota2": "Dota 2",
-}
-
-# TFT'nin Wikipedia sayfasinda infobox gorseli yok (API None donuyor,
-# dogrulandi), bu yuzden o tek kaynak icin Wikimedia Commons'taki resmi
-# logo dosyasina dogrudan sabit bir yedek veriyoruz.
-GAME_FALLBACK_IMAGES = {
-    "tft": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Teamfight_Tactics_logo.png",
-}
 
 
 def make_placeholder_image(source_name):
@@ -728,11 +683,6 @@ font-family:'Source Serif 4',Georgia,serif;position:relative;transition:backgrou
 font-size:12px;background:var(--paper);border:1px solid var(--ink);color:var(--ink);
 padding:6px 12px;cursor:pointer}}
 .theme-toggle:hover,.lang-toggle:hover{{background:var(--ink);color:var(--paper)}}
-.tabs{{display:flex;margin:20px 0 4px;border-bottom:1px solid var(--rule)}}
-.tab-btn{{flex:1;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;
-background:none;border:none;color:var(--ink-soft);padding:8px 4px;cursor:pointer;
-border-bottom:2px solid transparent;position:relative;top:1px}}
-.tab-btn.active{{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}}
 .filters{{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 8px}}
 .filter-field{{flex:1;min-width:200px}}
 .filter-field label{{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
@@ -831,7 +781,6 @@ margin-top:40px;padding-top:16px;border-top:1px solid var(--rule)}}
   <button class="lang-toggle" id="langToggle">EN</button>
 </div>
 <div class="wrap">
-<div class="tabs" id="mainTabs"></div>
 <button class="sources-label" id="sourcesLabel">kaynaklar</button>
 <div class="sources" id="sourceToggles"></div>
 <div class="filters">
@@ -903,9 +852,6 @@ const I18N = {{
     sortToImportance: "önem sırasına gör",
     coverageBadge: n => `${{n}} kaynakta`,
     sourcesToggle: n => `${{n}} kaynakta daha oku`,
-    tabNews: "Haberler",
-    tabGames: "Oyunlar",
-    oyunOtherLabel: "Diğer",
     markSeen: "gördüm olarak işaretle",
     markUnseen: "tekrar yukarı çıkar",
     prevPage: "Önceki",
@@ -934,9 +880,6 @@ const I18N = {{
     sortToImportance: "sort by importance",
     coverageBadge: n => `in ${{n}} sources`,
     sourcesToggle: n => `read in ${{n}} more sources`,
-    tabNews: "News",
-    tabGames: "Games",
-    oyunOtherLabel: "Other",
     markSeen: "mark as seen",
     markUnseen: "move back to top",
     prevPage: "Previous",
@@ -960,69 +903,11 @@ let sourcesExpanded = false;
 const EYE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
 const EYE_OFF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.66 18.66 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
 
-function buildTabs(){{
-  const L = I18N[lang];
-  const el = document.getElementById('mainTabs');
-  el.innerHTML = '';
-  [['haber', L.tabNews], ['oyun', L.tabGames]].forEach(([id, label]) => {{
-    const btn = document.createElement('button');
-    btn.className = 'tab-btn' + (currentTab === id ? ' active' : '');
-    btn.textContent = label;
-    btn.addEventListener('click', () => {{
-      currentTab = id;
-      currentPage = 1;
-      try {{ localStorage.setItem('sakinakis_tab', currentTab); }} catch(e) {{}}
-      loadFilterInputsForTab();
-      render();
-    }});
-    el.appendChild(btn);
-  }});
-}}
-
-// Oyunlar sekmesinde 11 ayri kaynak yerine 3 grup gosterilir -- kullanici
-// tek tek oyun degil, "nereden" (Riot / Steam / digeri) diye dusunuyor.
-// Grup butonuna tiklamak, o gruptaki TUM sourceId'leri birlikte ac/kapat.
-// "Riot Games" ve "Steam" marka isimleri, dile gore degismez; "Diger" ise
-// L.oyunOtherLabel ile cevriliyor (asagida buildSourceToggles icinde).
-const OYUN_SOURCE_GROUPS = [
-  {{ id: 'riot', label: 'Riot Games', sourceIds: ['valorant', 'lol', 'tft'] }},
-  {{ id: 'steam', label: 'Steam', sourceIds: ['deadlock', 'bodycam', 'zomboid', 'r6siege', 'cs2', 'dota2'] }},
-  {{ id: 'other', label: null, sourceIds: ['minecraft', 'game_news'] }},
-];
-
 function buildSourceToggles(){{
   const L = I18N[lang];
   const wrapEl = document.getElementById('sourcesLabel');
   const el = document.getElementById('sourceToggles');
   wrapEl.style.display = '';
-
-  if (currentTab === 'oyun'){{
-    const activeGroupCount = OYUN_SOURCE_GROUPS.filter(g => g.sourceIds.every(id => activeSources.has(id))).length;
-    wrapEl.innerHTML = `<span class="chevron">&#9656;</span><span>${{L.sourcesLabel}} (${{activeGroupCount}}/${{OYUN_SOURCE_GROUPS.length}})</span>`;
-    wrapEl.classList.toggle('expanded', sourcesExpanded);
-    wrapEl.onclick = () => {{
-      sourcesExpanded = !sourcesExpanded;
-      render();
-    }};
-    el.style.display = sourcesExpanded ? '' : 'none';
-    el.innerHTML = '';
-    OYUN_SOURCE_GROUPS.forEach(g => {{
-      const allActive = g.sourceIds.every(id => activeSources.has(id));
-      const btn = document.createElement('button');
-      btn.className = 'src-toggle' + (allActive ? ' active' : '');
-      const label = g.label || L.oyunOtherLabel;
-      btn.textContent = label;
-      btn.addEventListener('click', () => {{
-        if (allActive) g.sourceIds.forEach(id => activeSources.delete(id));
-        else g.sourceIds.forEach(id => activeSources.add(id));
-        currentPage = 1;
-        try {{ localStorage.setItem('sakinakis_sources', JSON.stringify([...activeSources])); }} catch(e) {{}}
-        render();
-      }});
-      el.appendChild(btn);
-    }});
-    return;
-  }}
 
   const tabSources = SOURCES_META.filter(s => s.category === currentTab);
   const activeCount = tabSources.filter(s => activeSources.has(s.id)).length;
@@ -1143,37 +1028,21 @@ const TOPIC_SYNONYMS = {{
   "ekonomi": ["dolar","euro","enflasyon","borsa","faiz","tcmb","merkez bankası","ihracat","ithalat","economy","market"],
   "siyaset": ["chp","akp","mhp","iyi parti","meclis","bakan","cumhurbaşkanı","seçim","parti","politics"],
   "magazin": ["ünlü","oyuncu","şarkıcı","dizi","influencer","boşandı","evlendi","celebrity"],
-  "teknoloji": ["yapay zeka","yazılım","uygulama","telefon","apple","google","microsoft","tech","ai"],
-  "patchnotes": ["patch","update","yama","sürüm","hotfix","düzeltme","bug fix","balance","sürüm notları","patch notes"],
-  "digeroyun": ["tournament","championship","şampiyona","esports","e-spor","major","worlds","playoffs","lig","turnuva",
-                "dlc","yeni harita","yeni ajan","yeni şampiyon","yeni karakter","genişleme","expansion","yeni mod",
-                "new content","reveal","yeni silah","yeni sezon","season","sale","discount","indirim","kampanya",
-                "fırsat","ücretsiz","free weekend"]
+  "teknoloji": ["yapay zeka","yazılım","uygulama","telefon","apple","google","microsoft","tech","ai"]
 }};
 
 const TOPIC_LABELS = {{
-  tr: {{futbol:"futbol", spor:"spor", ekonomi:"ekonomi", siyaset:"siyaset", magazin:"magazin", teknoloji:"teknoloji",
-        patchnotes:"güncelleme notları", digeroyun:"diğer"}},
-  en: {{futbol:"football", spor:"sports", ekonomi:"economy", siyaset:"politics", magazin:"celebrity", teknoloji:"tech",
-        patchnotes:"patch notes", digeroyun:"other"}}
+  tr: {{futbol:"futbol", spor:"spor", ekonomi:"ekonomi", siyaset:"siyaset", magazin:"magazin", teknoloji:"teknoloji"}},
+  en: {{futbol:"football", spor:"sports", ekonomi:"economy", siyaset:"politics", magazin:"celebrity", teknoloji:"tech"}}
 }};
 
 const TOPIC_KEYS_BY_TAB = {{
-  haber: ["futbol","spor","ekonomi","siyaset","magazin","teknoloji"],
-  oyun: ["patchnotes","digeroyun"]
+  haber: ["futbol","spor","ekonomi","siyaset","magazin","teknoloji"]
 }};
 
 function hideStorageKey(){{ return 'sakinakis_hide_' + currentTab; }}
 function onlyStorageKey(){{ return 'sakinakis_only_' + currentTab; }}
 function importantStorageKey(){{ return 'sakinakis_important_' + currentTab; }}
-
-function loadFilterInputsForTab(){{
-  try {{
-    hideInputEl.value = localStorage.getItem(hideStorageKey()) || '';
-    onlyInputEl.value = localStorage.getItem(onlyStorageKey()) || '';
-    importantInputEl.value = localStorage.getItem(importantStorageKey()) || '';
-  }} catch(e) {{ /* localStorage yoksa sessizce devam */ }}
-}}
 
 function getWordsArray(inputEl){{
   return inputEl.value.split(',').map(w => w.trim()).filter(w => w.length > 0);
@@ -1240,7 +1109,6 @@ function render(){{
   sortBtn.textContent = sortMode === 'chrono' ? L.sortToImportance : L.sortToChrono;
   sortBtn.classList.toggle('active', sortMode === 'importance');
 
-  buildTabs();
   buildTopicChips('hideTopicChips', hideInputEl, hideStorageKey());
   buildTopicChips('onlyTopicChips', onlyInputEl, onlyStorageKey());
   buildTopicChips('importantTopicChips', importantInputEl, importantStorageKey());
@@ -1298,10 +1166,7 @@ function render(){{
   }}
 
   const sortedForClustering = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
-  // Oyunlar sekmesinde kumeleme yok -- her haber kendi kartinda kalir
-  const allClusters = currentTab === 'oyun'
-    ? sortedForClustering.map(it => [it])
-    : clusterItems(sortedForClustering);
+  const allClusters = clusterItems(sortedForClustering);
   const unseenClusters = sortClustersByMode(allClusters.filter(c => !isClusterSeen(c)));
   const seenClusters = sortClustersByMode(allClusters.filter(c => isClusterSeen(c)));
   const orderedClusters = [...unseenClusters, ...seenClusters];
@@ -1449,7 +1314,6 @@ const importantInputEl = document.getElementById('importantInput');
 try {{
   lang = localStorage.getItem('sakinakis_lang') || 'tr';
   theme = localStorage.getItem('sakinakis_theme') || 'dark';
-  currentTab = localStorage.getItem('sakinakis_tab') || 'haber';
   hideInputEl.value = localStorage.getItem(hideStorageKey()) || '';
   onlyInputEl.value = localStorage.getItem(onlyStorageKey()) || '';
   importantInputEl.value = localStorage.getItem(importantStorageKey()) || '';
@@ -1513,33 +1377,17 @@ def main():
     if is_ci:
         missing = [it for it in all_items if not it.get("image")]
         if missing:
-            # Oyun kaynaklari: sabit konu, kaynak basina TEK sorgu (cache'lenir)
-            game_missing = [it for it in missing if it["sourceId"] in GAME_WIKI_TITLES]
-            other_missing = [it for it in missing if it["sourceId"] not in GAME_WIKI_TITLES]
-
-            if game_missing:
-                print(f"\n{len(set(it['sourceId'] for it in game_missing))} oyun kaynağı için Wikipedia kapak görseli aranıyor...")
-                game_image_cache = {}
-                for sid in set(it["sourceId"] for it in game_missing):
-                    img = fetch_wikipedia_thumbnail(GAME_WIKI_TITLES[sid], lang="en")
-                    game_image_cache[sid] = img or GAME_FALLBACK_IMAGES.get(sid)
-                for it in game_missing:
-                    img = game_image_cache.get(it["sourceId"])
-                    if img:
-                        it["image"] = img
-
-            if other_missing:
-                print(f"\nGörseli olmayan {len(other_missing)} haber için Wikipedia'da ilgili görsel aranıyor...")
-                with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-                    future_to_item = {executor.submit(fetch_entity_image, it["title"]): it for it in other_missing}
-                    for future in concurrent.futures.as_completed(future_to_item):
-                        it = future_to_item[future]
-                        try:
-                            img = future.result()
-                            if img:
-                                it["image"] = img
-                        except Exception:
-                            pass
+            print(f"\nGörseli olmayan {len(missing)} haber için Wikipedia'da ilgili görsel aranıyor...")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                future_to_item = {executor.submit(fetch_entity_image, it["title"]): it for it in missing}
+                for future in concurrent.futures.as_completed(future_to_item):
+                    it = future_to_item[future]
+                    try:
+                        img = future.result()
+                        if img:
+                            it["image"] = img
+                    except Exception:
+                        pass
 
             found = sum(1 for it in missing if it.get("image"))
             print(f"  {found}/{len(missing)} haber için görsel bulundu")
