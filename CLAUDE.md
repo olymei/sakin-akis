@@ -115,51 +115,78 @@ Google News bazen aynı haberi aynı kaynaktan birden fazla kez listeliyor (örn
 "GÜNCELLEME 1-Başlık" varyasyonları). `normalize_title_words` + `title_word_similarity`
 ile bulanık eşleştirme yapılıyor: en az 2 ortak kelime VE oran ≥0.6, 48 saat penceresi.
 `STOPWORDS_TR` içinde medya-kendine-referans kelimeler de var ("haber", "başlık" gibi).
+Bu katman değişmedi.
 
-### 2. Çapraz kaynak kümeleme (JS, `clusterItems` — sadece Haberler sekmesinde, dinamik)
-Farklı kaynakların AYNI OLAYI yazdığı haberleri tek karta topluyor. Filtre/sekme değişince
-yeniden hesaplanıyor (client-side, canlı).
+### 2. Çapraz kaynak kümeleme — artık AI DOĞRULAMALI, build zamanında (Python, CI)
 
-**Mantık (`isSimilarTitle`):**
-- ≥2 ortak anlamlı kelime VE oran ≥0.3 → kümelensin, VEYA
-- ≥2 ortak özel isim (büyük harfli kelime) → kümelensin, VEYA
-- Tam 1 ortak özel isim VARSA ve bu isim o an nadir geçiyorsa (`COMMON_NAME_THRESHOLD = 4`'ten
-  az/eşit haberde geçiyorsa) → kümelensin
+⚠️ **Mimari değişti (önemli):** Kümeleme kararının kendisi artık tarayıcıda (JS) değil,
+build zamanında Python'da, Claude'un doğrulamasıyla veriliyor. Eskiden JS'de dinamik
+`clusterItems`/`isSimilarTitle` sezgisel benzerlik hesaplıyordu (kelime oranı + özel isim
+eşleşmesi, aşağıdaki evrim notlarına bak) — ama kullanıcı tekrar tekrar yanlış eşleştirme
+("bu kartlarda hep bir hata var") bildirdi. Sezgisel kelime/özel-isim eşleştirmesi
+temelden kusurlu: "aynı kelimeyi/kişiyi geçiyorlar" ile "aynı OLAYI anlatıyorlar" arasında
+ayrım yapamıyor. Bu, tam olarak bir LLM'in iyi olduğu bir yargı işi.
 
-**Neden bu kadar karmaşık — geçirdiği evrim:**
+**Yeni akış (`main()` içinde):**
+1. `cluster_items_for_summary` (Python) hâlâ var ama artık NİHAİ karar değil, sadece
+   ADAY grup üretiyor (eski sezgisel mantıkla — kelime oranı + özel isim + 36 saat
+   penceresi, kasıtlı olarak gevşek/permissive).
+2. `validate_and_summarize_clusters_with_ai` her aday grubu (title + source ile) TEK bir
+   toplu API çağrısında Claude'a gönderiyor. Her grup için Claude: (a) o gruptaki
+   başlıklardan HANGİLERİ gerçekten aynı spesifik olayı anlatıyor (`"keep"` — index
+   listesi, sıfırdan başlar) belirliyor, (b) `keep` 2+ ise tarafsız bir özet cümlesi
+   yazıyor. Yani AI hem kümeleme kararını DOĞRULUYOR (adaydan yanlış üyeleri atabiliyor)
+   hem de özeti aynı anda üretiyor — iki ayrı adım değil.
+3. Sonuç: her ogeye kalıcı bir `cluster_id` (int) ve varsa `ai_summary` ataniyor,
+   `clusterId`/`aiSummary` olarak client'a gönderiliyor.
+4. JS tarafında `clusterItems` artık SADECE bu `clusterId`'ye göre gruplama yapıyor —
+   hiçbir benzerlik hesabı yok. Filtre/sekme değiştiğinde hâlâ dinamik olarak yeniden
+   gruplanıyor (filtrelenmiş ögeler arasında hangi clusterId'ler hayatta kaldıysa onlara
+   göre) ama HANGİ ögelerin aynı kümeye ait olduğu kararı artık sabit (build zamanında
+   verildi, filtre değişince yeniden hesaplanmıyor).
+
+**Eski sezgisel mantığın (adaylık için hâlâ kullanılan) geçirdiği evrim (tarihsel not):**
 1. İlk hali: sadece kelime oranı → çok gevşekti, "su gibi" (Erdoğan metaforu) ile "yağış"
    haberini yanlış birleştirdi
 2. Özel isim (büyük harf) tabanlı hale getirildi → bu sefer "Trump" gibi çok sık geçen bir
    isim, birbirinden tamamen alakasız Trump haberlerini (Çin ile / İrlanda ile) yanlış
    birleştirdi
 3. Frekans eşiği eklendi (`COMMON_NAME_THRESHOLD`) → yaygın isimler tek başına yetmiyor,
-   nadir isimler (örn. "Mansur Yavaş") tek başına yetiyor — şu anki hal, hem "Yavaş"
-   senaryosu hem "Trump" senaryosu hem "su gibi" senaryosu doğru çalışıyor (test edildi)
-4. Bigram (iki kelimelik tam isim, örn. "Mansur Yavaş") önceliği eklendi — tekil kelimelere
-   bölmeden önce tam isim denenir, daha isabetli
+   nadir isimler tek başına yetiyor
+4. Bigram (iki kelimelik tam isim) önceliği eklendi
+5. **Bu sezgisel adımlar hâlâ tamamen yanlış eşleştirmeleri engelleyemedi** (kullanıcı
+   şikayeti) → AI doğrulama katmanı eklendi (yukarıdaki yeni akış). Sezgisel mantık artık
+   sadece ADAY üretiyor, son sözü Claude söylüyor.
+
+**Fallback (AI mevcut değilse veya çağrı başarısız olursa):** Sezgisel aday gruplar
+DOĞRULANMADAN, oldukları gibi `cluster_id` alıyor (eski davranışla birebir aynı sonuç) —
+hiçbir şey kırılmıyor, sadece kalite eskiye döner. Yerelde (`ANTHROPIC_API_KEY` yok) hep bu
+yola düşülür; local dev testi için yeterli.
 
 **Aynı sourceId'den gelen haberler asla aynı kümede birleşmiyor** (farklı kaynakların aynı
 olayı yazmasını kümelemek amaç, tek kaynağın kendi tekrarını değil — o zaten katman 1'de
-temizleniyor).
+temizleniyor). Bu kural hem aday üretiminde hem AI promptunda geçerli.
 
-`extract_proper_nouns` / `extractProperNouns`: Python ve JS'de PARALEL implementasyonlar var
-(ikisi de aynı mantığı uygular ama farklı amaçlarla — Python'daki sadece AI özet için hangi
-haberlerin gruplanacağını bulur, JS'deki ekranda canlı gösterim için). **Birini değiştirirsen
-diğerini de güncellemeyi unutma**, tutarsızlık kafa karıştırır.
+`extract_proper_nouns`: artık SADECE Python'da var (JS'deki paralel kopyası
+`extractProperNouns` silindi -- JS artık kümeleme mantığı taşımıyor, "ikisini birden
+güncellemeyi unutma" derdi ortadan kalktı).
 
-⚠️ **Oyunlar sekmesinde kümeleme tamamen kapalı** — kullanıcı özellikle istedi
-(`currentTab === 'oyun'` kontrolü ile `clusterItems` çağrısı bypass ediliyor).
+⚠️ **Oyunlar sekmesinde kümeleme tamamen kapalı** — kullanıcı özellikle istedi. Python
+tarafında da sadece `category == "haber"` ogeleri aday kümelemeye sokuluyor (oyun ogeleri
+hiç AI'a gönderilmiyor, gereksiz maliyet yok).
 
-## AI özet (Claude Haiku)
+## AI özet + kümeleme doğrulama (Claude Haiku)
 
-Sadece kümelenmiş (2+ kaynaklı) haberler için, TEK bir toplu API çağrısında (maliyet/hız
-için — her küme için ayrı çağrı değil) `claude-haiku-4-5-20251001` modeline gönderiliyor.
-Prompt: her grup için tarafsız, 18 kelimeyi geçmeyen tek cümle iste, JSON array olarak dön.
+Sadece aday kümelenmiş (2+ kaynaklı, sezgisel) haberler için, TEK bir toplu API çağrısında
+(maliyet/hız için — her aday grup için ayrı çağrı değil) `claude-haiku-4-5-20251001`
+modeline gönderiliyor. Bu tek çağrı hem kümeleme doğrulamasını hem özeti üretiyor (bkz.
+yukarıdaki "Çapraz kaynak kümeleme" bölümü).
 
 - `ANTHROPIC_API_KEY` GitHub Secret olarak saklı, sadece CI'da kullanılıyor (client-side'a
   ASLA sızmamalı — bu güvenlik açısından kritik, API anahtarını client JS'e gömmek olmaz)
-- Anahtar yoksa veya API başarısız olursa: sessizce en kısa başlığa düşülür (`fallback`),
-  hiçbir şey kırılmaz
+- Anahtar yoksa veya API başarısız olursa: sessizce sezgisel aday kümeler doğrulanmadan
+  kullanılır (`ai_summary` atanmaz, kart başlığında kümedeki en kısa/en sade başlık
+  gösterilir) — hiçbir şey kırılmaz
 - Kart başlığında AI özeti varsa o gösterilir, yoksa kümedeki en kısa/en sade başlık
 
 ## Görseller

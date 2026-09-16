@@ -474,8 +474,10 @@ def extract_proper_nouns(title):
     siklikla dogrudan ozel isimle baslar ("Yavas kabul edildi..." gibi).
     Cumle basinda tesadufen buyuk harfle baslayan sozcuklerin (ozel isim
     olmayan) yanlis pozitif yaratma riski, ad sikligi esigiyle (bkz.
-    COMMON_NAME_THRESHOLD) zaten sinirlaniyor. JS tarafindaki
-    extractProperNouns ile ayni mantik (kumeleme sonucu tutarli olsun diye)."""
+    COMMON_NAME_THRESHOLD) zaten sinirlaniyor. Sadece ADAY kume uretmek icin
+    kullanilir -- nihai kumeleme karari artik AI dogrulamasindan geciyor
+    (bkz. validate_and_summarize_clusters_with_ai), bu yuzden burasi
+    kasitli olarak gevsek/permissive kalabilir."""
     raw_words = title.split()
     proper = set()
     for w in raw_words:
@@ -517,9 +519,11 @@ def is_similar_title_for_summary(words_a, words_b, proper_a, proper_b, name_freq
 
 
 def cluster_items_for_summary(items):
-    """JS tarafindaki clusterItems ile ayni mantigin Python portu -- AI'a
-    hangi haberlerin ayni olay oldugunu (dolayisiyla tek ozet gerektigini)
-    soylemek icin, build zamaninda (sunucu/Action tarafinda) calisir."""
+    """Kelime/ozel-isim orakalimasiyla ADAY kumeler uretir (nihai karar
+    degil) -- bu adaylar validate_and_summarize_clusters_with_ai'a
+    gonderilip Claude'un gercekten ayni olay olan alt-kumeyi secmesi icin
+    kullanilir. AI mevcut degilse (anahtar yok/cagri basarisiz), bu
+    adaylar dogrulanmadan oldugu gibi kullanilir (eski davranis)."""
     items_sorted = sorted(items, key=lambda x: x["date"], reverse=True)
     word_sets = [normalize_title_words(it["title"]) for it in items_sorted]
     proper_sets = [extract_proper_nouns(it["title"]) for it in items_sorted]
@@ -548,32 +552,49 @@ def cluster_items_for_summary(items):
     return clusters
 
 
-def summarize_clusters_with_ai(title_groups, api_key):
-    """Birden fazla kaynaktan gelen ayni haberin basliklarini tek bir
-    tarafsiz cumleye indirger. Tum gruplari TEK bir API cagrisinda toplu
-    gonderir (maliyet/hiz icin). Basarisiz olursa None doner, caller
-    en kisa baslik yontemine geri duser."""
-    if not api_key or not title_groups:
+def validate_and_summarize_clusters_with_ai(candidate_groups, api_key):
+    """Sezgisel eslestirme (cluster_items_for_summary) sadece ADAY gruplar
+    uretir -- kelime/ozel-isim orakalimasi bazen alakasiz basliklari yanlislikla
+    ayni gruba sokar (bkz. CLAUDE.md'deki "su gibi"/"Trump" ornekleri). Bu
+    fonksiyon her aday grubu Claude'a gonderip GERCEKTEN ayni olay olan
+    alt-kumeyi ("keep" indeksleri) ve o alt-kume icin tarafsiz bir ozet
+    cumlesi istiyor -- boylece kumeleme kararinin kendisi de AI tarafindan
+    dogrulanmis oluyor, sadece ozet degil. Tum gruplari TEK bir API
+    cagrisinda toplu gonderir (maliyet/hiz icin). Basarisiz olursa None
+    doner, caller sezgisel gruplari oldugu gibi (dogrulanmamis) kullanir."""
+    if not api_key or not candidate_groups:
         return None
 
     prompt_lines = []
-    for idx, titles in enumerate(title_groups, 1):
-        prompt_lines.append(f"{idx}. " + " | ".join(titles))
+    for idx, group in enumerate(candidate_groups, 1):
+        titles = " | ".join(f'{it["source"]}: {it["title"]}' for it in group)
+        prompt_lines.append(f"{idx}. {titles}")
 
     user_content = (
-        "Asagida, ayni haber olayini farkli kaynaklarin nasil yazdigini "
-        "gosteren numarali gruplar var. Her grup icin, o olayi TARAFSIZ ve "
-        "SADE bir dille anlatan, TEK CUMLELIK, en fazla 18 kelimelik bir "
-        "ozet cumle yaz. Yorum katma, dramatize etme, taraf tutma; sadece "
-        "olgusal bilgiyi ver. Sonucu SADECE bir JSON dizisi (array) olarak "
-        "dondur -- aciklama, markdown, kod blogu YOK. Dizideki her eleman "
-        "sirasiyla bir gruba karsilik gelen ozet cumle olsun.\n\n"
+        "Asagida numarali gruplar var. Her grupta, FARKLI kaynaklarin AYNI "
+        "haber OLAYINI yazdigi TAHMIN EDILEN basliklar bulunuyor -- ama bu "
+        "kesin degil, bazen alakasiz basliklar yanlislikla ayni gruba "
+        "dusebilir (orn. sadece ayni kisinin adini gecirdikleri icin, "
+        "aslinda farkli olaylar olabilirler).\n\n"
+        "Her grup icin SIRASIYLA:\n"
+        "1. O gruptaki basliklardan HANGILERI GERCEKTEN ayni SPESIFIK olayi "
+        "anlatiyor (sadece ayni genel konu/kisi degil, ayni olay) belirle. "
+        "0'dan baslayan pozisyon numaralarini 'keep' alanina yaz. Hicbiri "
+        "gercekten eslesmiyorsa (hepsi farkli olaylardan bahsediyorsa) bos "
+        "dizi [] yaz.\n"
+        "2. 'keep' alaninda 2 veya daha fazla index varsa, o olayi TARAFSIZ "
+        "ve SADE bir dille anlatan, TEK CUMLELIK, en fazla 18 kelimelik bir "
+        "ozet cumle yaz ('summary' alani, yorum/dramatize etme/taraf tutma "
+        "YOK). 'keep' 2'den azsa summary null olsun.\n\n"
+        "Sonucu SADECE bir JSON dizisi olarak dondur -- aciklama, markdown, "
+        "kod blogu YOK. Dizideki her eleman sirasiyla bir gruba karsilik "
+        'gelsin, format: {"keep": [0,1], "summary": "..." veya null}\n\n'
         + "\n".join(prompt_lines)
     )
 
     body = json.dumps({
         "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 3000,
+        "max_tokens": 4000,
         "messages": [{"role": "user", "content": user_content}],
     }).encode("utf-8")
 
@@ -589,19 +610,31 @@ def summarize_clusters_with_ai(title_groups, api_key):
     )
     try:
         ctx = ssl.create_default_context()
-        with urllib.request.urlopen(req, timeout=45, context=ctx) as resp:
+        with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         text = "".join(
             block.get("text", "") for block in data.get("content", [])
             if block.get("type") == "text"
         ).strip()
         text = re.sub(r"^```(json)?\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
-        summaries = json.loads(text)
-        if isinstance(summaries, list) and len(summaries) == len(title_groups):
-            return [str(s).strip() for s in summaries]
-        print(f"  [AI ozet uyarisi] beklenmeyen format, baslik yontemine donuluyor")
+        results = json.loads(text)
+        if isinstance(results, list) and len(results) == len(candidate_groups):
+            cleaned = []
+            for r in results:
+                if not isinstance(r, dict):
+                    cleaned.append({"keep": [], "summary": None})
+                    continue
+                keep_raw = r.get("keep")
+                keep = [i for i in keep_raw if isinstance(i, int)] if isinstance(keep_raw, list) else []
+                summary = r.get("summary")
+                cleaned.append({
+                    "keep": keep,
+                    "summary": str(summary).strip() if summary else None,
+                })
+            return cleaned
+        print("  [AI kumeleme uyarisi] beklenmeyen format, sezgisel gruplar oldugu gibi kullanilacak")
     except Exception as e:
-        print(f"  [AI ozet hatasi] {e}")
+        print(f"  [AI kumeleme hatasi] {e}")
     return None
 
 
@@ -638,6 +671,7 @@ def build_html(all_items):
         "category": it["category"],
         "image": it.get("image") or make_placeholder_image(it["source"]),
         "aiSummary": it.get("ai_summary"),
+        "clusterId": it.get("cluster_id"),
     } for it in all_items]
 
     sources_meta = [{"id": s["id"], "name": s["name"], "category": s["category"], "lang": s.get("lang", "")} for s in SOURCES]
@@ -795,118 +829,23 @@ const DATA = {json.dumps(data, ensure_ascii=False)};
 const SOURCES_META = {json.dumps(sources_meta, ensure_ascii=False)};
 const GENERATED = "{generated}";
 
-const STOPWORDS = new Set([
-  'icin','ile','oldu','olan','yeni','diye','gibi','kadar','sonra','once','daha','cok',
-  'yer','aldi','etti','yapti','dedi','ancak','fakat','ama','veya','iken','uzere','var',
-  'bir','bu','su','o','da','de','ki','mi','mu','ne','nin','nun','tan','ten','dan','den',
-  'the','and','for','with','from','that','this','have','has','was','were','been','will',
-  'says','said','after','before','over','into','about','their','they','what','when',
-  'haber','haberi','haberler','basligi','baslik','manset','aciklamasi','aciklama'
-]);
-
-function normalizeTitle(title){{
-  return title.toLocaleLowerCase('tr')
-    .replace(/[^\\p{{L}}\\p{{N}}\\s]/gu, ' ')
-    .split(/\\s+/)
-    .filter(w => w.length >= 3 && !STOPWORDS.has(w));
-}}
-
-function extractProperNouns(title){{
-  // Basliktaki BUYUK HARFLE baslayan kelimeleri (muhtemelen kisi/yer/kurum
-  // adlari) cikarir. Ilk kelimeyi de dahil ediyoruz -- Turkce haber basliklari
-  // siklikla dogrudan ozel isimle baslar ("Yavas kabul edildi..." gibi).
-  // Cumle basinda tesadufen buyuk harfle baslayan sozcuklerin (ozel isim
-  // olmayan) yanlis pozitif yaratma riski, ad sikligi esigiyle (COMMON_NAME_THRESHOLD)
-  // zaten sinirlaniyor. Kesme isaretinden sonraki ek ("Yavas'a" -> "a") atilir,
-  // boylece "Yavas'a" ile "Yavas'i" ayni kok olarak eslesir.
-  const rawWords = title.split(/\\s+/);
-  const proper = new Set();
-  rawWords.forEach(w => {{
-    const stem = w.split(/['’]/)[0].replace(/[^\\p{{L}}\\p{{N}}]/gu, '');
-    if (stem.length < 3) return;
-    const first = stem[0];
-    if (first === first.toLocaleUpperCase('tr') && first !== first.toLocaleLowerCase('tr')){{
-      proper.add(stem.toLocaleLowerCase('tr'));
-    }}
-  }});
-  return proper;
-}}
-
-function hasSharedItem(setA, setB){{
-  for (const w of setA){{ if (setB.has(w)) return true; }}
-  return false;
-}}
-
-function sharedItemCount(setA, setB){{
-  let n = 0;
-  setA.forEach(w => {{ if (setB.has(w)) n++; }});
-  return n;
-}}
-
-// Bir ozel ismin bu haber grubunda kac FARKLI haberde gectigini sayar.
-// "Trump" gibi cok sık geçen bir isim onlarca alakasiz haberde birden
-// gorulur; tek basina kumelemeye yetmemeli. "Yavas" gibi nadir gecen bir
-// isimse muhtemelen o an tek bir olayla ilgilidir, tek basina yeterlidir.
-const COMMON_NAME_THRESHOLD = 4;
-
-function buildNameFrequency(properSets){{
-  const freq = new Map();
-  properSets.forEach(set => {{
-    set.forEach(w => freq.set(w, (freq.get(w) || 0) + 1));
-  }});
-  return freq;
-}}
-
-function isSimilarTitle(wordsA, wordsB, properA, properB, nameFreq){{
-  if (wordsA.size === 0 || wordsB.size === 0) return false;
-  let common = 0;
-  wordsA.forEach(w => {{ if (wordsB.has(w)) common++; }});
-  // iki veya daha fazla ortak anlamli kelime yeterli -- ama basliklardan biri
-  // cok daha uzunsa (ornegin 15 kelimelik bir basligin sadece 2 kelimesi
-  // digeriyle ortak), bu tesadufi olabilir; oranin da makul olmasini isteriz
-  const ratio = common / Math.min(wordsA.size, wordsB.size);
-  if (common >= 2 && ratio >= 0.3) return true;
-
-  if (properA.size === 0 || properB.size === 0) return false;
-  const sharedProperCount = sharedItemCount(properA, properB);
-  // iki veya daha fazla ortak ozel isim (kisi+yer/kurum gibi) guclu bir sinyal --
-  // "Trump" + "Cin" ikisi birden baska bir "Trump" + "Irlanda" haberiyle eslesmez
-  if (sharedProperCount >= 2) return true;
-  if (sharedProperCount === 1){{
-    let sharedName = null;
-    properA.forEach(w => {{ if (properB.has(w)) sharedName = w; }});
-    // tek ortak isim varsa, sadece bu isim o an nadir geciyorsa (yaygin/
-    // populer bir figur degilse) yeterli sayiyoruz
-    return (nameFreq.get(sharedName) || 0) <= COMMON_NAME_THRESHOLD;
-  }}
-  return false;
-}}
-
 function clusterItems(items){{
-  // items onceden tarihe gore azalan sirali gelmeli; her kumenin ilk (en yeni)
-  // ogesi "primary" olur, benzer basliktaki digerleri altina toplanir.
-  const wordSets = items.map(it => new Set(normalizeTitle(it.title)));
-  const properSets = items.map(it => extractProperNouns(it.title));
-  const nameFreq = buildNameFrequency(properSets);
-  const assigned = new Array(items.length).fill(false);
-  const clusters = [];
-  for (let i = 0; i < items.length; i++){{
-    if (assigned[i]) continue;
-    const cluster = [items[i]];
-    assigned[i] = true;
-    const dtI = new Date(items[i].date).getTime();
-    for (let j = i + 1; j < items.length; j++){{
-      if (assigned[j] || items[j].sourceId === items[i].sourceId) continue;
-      const dtJ = new Date(items[j].date).getTime();
-      if (Math.abs(dtI - dtJ) > 36 * 3600 * 1000) continue;
-      if (isSimilarTitle(wordSets[i], wordSets[j], properSets[i], properSets[j], nameFreq)){{
-        cluster.push(items[j]);
-        assigned[j] = true;
-      }}
+  // Kumeleme karari artik build zamaninda Python tarafinda (AI dogrulamali)
+  // veriliyor -- her ogeye kalici bir clusterId ataniyor. Burada tarayicida
+  // sadece bu id'ye gore GRUPLAMA yapiliyor, benzerlik hesaplanmiyor. Ayni
+  // clusterId'yi paylasmayan (ya da clusterId'si olmayan, yani AI/sezgisel
+  // eslesme hic bulamamis) her oge kendi tek-elemanli kumesinde kalir.
+  const groups = new Map();
+  const singles = [];
+  items.forEach(it => {{
+    if (it.clusterId != null){{
+      if (!groups.has(it.clusterId)) groups.set(it.clusterId, []);
+      groups.get(it.clusterId).push(it);
+    }} else {{
+      singles.push([it]);
     }}
-    clusters.push(cluster);
-  }}
-  return clusters;
+  }});
+  return [...groups.values(), ...singles];
 }}
 
 const I18N = {{
@@ -1563,26 +1502,49 @@ def main():
             found = sum(1 for it in missing if it.get("image"))
             print(f"  {found}/{len(missing)} haber için görsel bulundu")
 
+    # Kumeleme artik AI tarafindan DOGRULANIYOR (sadece ozetlenmiyor).
+    # Sezgisel eslestirme (cluster_items_for_summary) sadece ADAY gruplar
+    # uretir; Claude bu adaylardan hangi basliklarin GERCEKTEN ayni olay
+    # oldugunu belirleyip ozetliyor. Sonuc, her ogeye kalici bir cluster_id
+    # olarak atanip client'a gonderiliyor -- boylece tarayicida (JS) artik
+    # hicbir kumeleme mantigi calismiyor, sadece bu id'ye gore gruplama var.
+    # Oyunlar sekmesinde kumeleme zaten kapali oldugu icin sadece haber
+    # kategorisindeki ogeler adaylandiriliyor.
     api_key = os.environ.get("ANTHROPIC_API_KEY")
-    clusters = cluster_items_for_summary(all_items)
-    multi_clusters = [c for c in clusters if len(c) >= 2]
-    if multi_clusters:
+    haber_items = [it for it in all_items if it["category"] == "haber"]
+    candidate_groups = cluster_items_for_summary(haber_items)
+    multi_candidates = [c for c in candidate_groups if len(c) >= 2]
+    cluster_counter = 0
+    if multi_candidates:
+        validations = None
         if api_key:
-            print(f"\n{len(multi_clusters)} küme için AI özeti isteniyor...")
-            title_groups = [[it["title"] for it in c] for c in multi_clusters]
-            summaries = summarize_clusters_with_ai(title_groups, api_key)
-            if summaries:
-                for cluster, summary in zip(multi_clusters, summaries):
-                    for it in cluster:
-                        it["ai_summary"] = summary
-                print(f"  {len(summaries)} özet başarıyla alındı")
-            else:
-                print("  AI özeti alınamadı, en kısa başlık yöntemine dönülüyor")
+            print(f"\n{len(multi_candidates)} aday küme AI ile doğrulanıyor...")
+            validations = validate_and_summarize_clusters_with_ai(multi_candidates, api_key)
+
+        if validations:
+            confirmed = 0
+            for group, result in zip(multi_candidates, validations):
+                keep_items = [group[i] for i in result["keep"] if 0 <= i < len(group)]
+                if len(keep_items) >= 2:
+                    cluster_counter += 1
+                    confirmed += 1
+                    for it in keep_items:
+                        it["cluster_id"] = cluster_counter
+                        if result["summary"]:
+                            it["ai_summary"] = result["summary"]
+            print(f"  {confirmed}/{len(multi_candidates)} aday küme AI tarafından onaylandı")
         else:
-            print(
-                f"\n{len(multi_clusters)} kümelenmiş haber var ama ANTHROPIC_API_KEY "
-                "tanımlı değil, AI özeti atlanacak (en kısa başlık kullanılacak)"
-            )
+            if api_key:
+                print("  AI doğrulaması alınamadı, sezgisel kümeler doğrulanmadan kullanılıyor")
+            else:
+                print(
+                    f"\n{len(multi_candidates)} aday küme var ama ANTHROPIC_API_KEY "
+                    "tanımlı değil, sezgisel kümeler doğrulanmadan kullanılacak"
+                )
+            for group in multi_candidates:
+                cluster_counter += 1
+                for it in group:
+                    it["cluster_id"] = cluster_counter
 
     html = build_html(all_items)
 
