@@ -131,12 +131,26 @@ ayrım yapamıyor. Bu, tam olarak bir LLM'in iyi olduğu bir yargı işi.
 1. `cluster_items_for_summary` (Python) hâlâ var ama artık NİHAİ karar değil, sadece
    ADAY grup üretiyor (eski sezgisel mantıkla — kelime oranı + özel isim + 36 saat
    penceresi, kasıtlı olarak gevşek/permissive).
-2. `validate_and_summarize_clusters_with_ai` her aday grubu (title + source ile) TEK bir
-   toplu API çağrısında Claude'a gönderiyor. Her grup için Claude: (a) o gruptaki
-   başlıklardan HANGİLERİ gerçekten aynı spesifik olayı anlatıyor (`"keep"` — index
-   listesi, sıfırdan başlar) belirliyor, (b) `keep` 2+ ise tarafsız bir özet cümlesi
-   yazıyor. Yani AI hem kümeleme kararını DOĞRULUYOR (adaydan yanlış üyeleri atabiliyor)
-   hem de özeti aynı anda üretiyor — iki ayrı adım değil.
+2. `validate_and_summarize_clusters_with_ai` her aday grubu (title + source ile) Claude'a
+   gönderiyor. Her grup için Claude: (a) o gruptaki başlıklardan HANGİLERİ gerçekten aynı
+   spesifik olayı anlatıyor (`"keep"` — index listesi, sıfırdan başlar) belirliyor, (b)
+   `keep` 2+ ise tarafsız bir özet cümlesi yazıyor. Yani AI hem kümeleme kararını
+   DOĞRULUYOR (adaydan yanlış üyeleri atabiliyor) hem de özeti aynı anda üretiyor — iki
+   ayrı adım değil.
+
+   ⚠️ **TEK dev API çağrısı değil, `CLUSTER_VALIDATION_BATCH_SIZE` (25) boyutunda
+   batch'ler.** İlk hali tüm adayları (canlıda 209 grup) TEK çağrıda gönderiyordu --
+   çağrı başarıyla dönüyordu ama Claude'un cevabı giriş grup sayısıyla EŞLEŞMİYORDU
+   (muhtemelen bu kadar uzun bir listede pozisyon-birebir eşlemeyi tam koruyamıyor).
+   Kullanıcı canlı CI log'unu paylaşıp doğruladı: `"[AI kumeleme uyarisi] beklenmeyen
+   format..."`. Çözüm: adaylar 25'erlik gruplar halinde ayrı çağrılarla gönderiliyor
+   (~209 grup için ~9 çağrı, ek maliyet ihmal edilebilir -- sabit prompt talimatı
+   tekrarı birkaç bin token). Bir batch başarısız olursa SADECE o batch'in grupları
+   sezgisel/doğrulanmamış kalıyor (`None` olarak işaretlenir), diğer batch'lerin gerçek
+   AI sonucu kaybolmuyor -- eskiden tek batch hatası TÜM build'i doğrulamasız
+   bırakıyordu, artık kısmi başarı korunuyor. `_validate_cluster_batch` tek bir batch'in
+   ham API çağrısını yapar; `validate_and_summarize_clusters_with_ai` bunu döngüyle
+   çağırıp sonuçları birleştirir.
 3. Sonuç: her ogeye kalıcı bir `cluster_id` (int) ve varsa `ai_summary` ataniyor,
    `clusterId`/`aiSummary` olarak client'a gönderiliyor.
 4. JS tarafında `clusterItems` artık SADECE bu `clusterId`'ye göre gruplama yapıyor —

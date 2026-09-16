@@ -552,6 +552,15 @@ def cluster_items_for_summary(items):
     return clusters
 
 
+# Tek cagrida kac aday grup gonderilecegi. Ilk denemede TUM adaylari (209)
+# tek cagriya gonderdik -- API cagrisi basariyla donuyor ama Claude'un
+# cevabi eleman sayisi bakimindan giris grubuyla UYUSMUYORDU (muhtemelen bu
+# kadar uzun bir listede pozisyon-birebir eslesmeyi tam koruyamiyor; canli
+# CI'da dogrulandi, bkz. CLAUDE.md). Kucuk gruplar halinde gondermek bu
+# riski buyuk olcude azaltiyor.
+CLUSTER_VALIDATION_BATCH_SIZE = 25
+
+
 def validate_and_summarize_clusters_with_ai(candidate_groups, api_key):
     """Sezgisel eslestirme (cluster_items_for_summary) sadece ADAY gruplar
     uretir -- kelime/ozel-isim orakalimasi bazen alakasiz basliklari yanlislikla
@@ -559,12 +568,33 @@ def validate_and_summarize_clusters_with_ai(candidate_groups, api_key):
     fonksiyon her aday grubu Claude'a gonderip GERCEKTEN ayni olay olan
     alt-kumeyi ("keep" indeksleri) ve o alt-kume icin tarafsiz bir ozet
     cumlesi istiyor -- boylece kumeleme kararinin kendisi de AI tarafindan
-    dogrulanmis oluyor, sadece ozet degil. Tum gruplari TEK bir API
-    cagrisinda toplu gonderir (maliyet/hiz icin). Basarisiz olursa None
-    doner, caller sezgisel gruplari oldugu gibi (dogrulanmamis) kullanir."""
+    dogrulanmis oluyor, sadece ozet degil. Adaylari CLUSTER_VALIDATION_BATCH_SIZE
+    boyutunda gruplar halinde, ayri API cagrilariyla gonderir (tek dev cagri
+    yerine -- nedeni yukarida). Bir batch basarisiz olursa SADECE o batch'teki
+    gruplar icin None doner (caller onlari sezgisel/dogrulanmamis olarak
+    kullanir); diger batch'lerin gercek AI sonucu kaybolmaz. api_key hic
+    yoksa veya candidate_groups bossa (AI hic denenmedi), tum fonksiyon None
+    doner."""
     if not api_key or not candidate_groups:
         return None
 
+    all_results = []
+    for start in range(0, len(candidate_groups), CLUSTER_VALIDATION_BATCH_SIZE):
+        batch = candidate_groups[start:start + CLUSTER_VALIDATION_BATCH_SIZE]
+        batch_results = _validate_cluster_batch(batch, api_key)
+        if batch_results is None:
+            # Bu batch basarisiz oldu -- sadece bu batch'teki gruplar icin
+            # None koyuyoruz (caller bunlari dogrulanmamis/sezgisel olarak
+            # ele alacak), diger basarili batch'lerin sonucu kaybolmuyor.
+            batch_results = [None] * len(batch)
+        all_results.extend(batch_results)
+    return all_results
+
+
+def _validate_cluster_batch(candidate_groups, api_key):
+    """Tek bir batch icin gercek API cagrisini yapar. Basarili olursa
+    candidate_groups ile ayni uzunlukta bir liste doner (her eleman
+    {"keep": [...], "summary": str|None}), aksi halde None."""
     prompt_lines = []
     for idx, group in enumerate(candidate_groups, 1):
         titles = " | ".join(f'{it["source"]}: {it["title"]}' for it in group)
@@ -586,21 +616,18 @@ def validate_and_summarize_clusters_with_ai(candidate_groups, api_key):
         "ve SADE bir dille anlatan, TEK CUMLELIK, en fazla 18 kelimelik bir "
         "ozet cumle yaz ('summary' alani, yorum/dramatize etme/taraf tutma "
         "YOK). 'keep' 2'den azsa summary null olsun.\n\n"
-        "Sonucu SADECE bir JSON dizisi olarak dondur -- aciklama, markdown, "
-        "kod blogu YOK. Dizideki her eleman sirasiyla bir gruba karsilik "
-        'gelsin, format: {"keep": [0,1], "summary": "..." veya null}\n\n'
+        f"Sonucta TAM OLARAK {len(candidate_groups)} eleman olmali -- her "
+        "girdi grubuna birebir karsilik gelen bir eleman, ne eksik ne "
+        "fazla, birlestirme/atlama YOK. Sonucu SADECE bir JSON dizisi "
+        "olarak dondur -- aciklama, markdown, kod blogu YOK. Dizideki her "
+        "eleman sirasiyla bir gruba karsilik gelsin, format: "
+        '{"keep": [0,1], "summary": "..." veya null}\n\n'
         + "\n".join(prompt_lines)
     )
 
     body = json.dumps({
         "model": "claude-haiku-4-5-20251001",
-        # 4000 riskliydi: ~200+ aday grup, her biri (onaylanirsa) kendi ozet
-        # cumlesiyle birlikte donuyor -- cikti kolayca bu siniri asip yaniti
-        # yarida kesebilir (JSON parse hatasi -> sessizce sezgisel fallback'e
-        # duser). 16000 ile bu riski ortadan kaldiriyoruz; kullanilmayan
-        # kapasite icin ekstra ucret yok, sadece gercekten uretilen token
-        # kadar odeniyor.
-        "max_tokens": 16000,
+        "max_tokens": 8000,
         "messages": [{"role": "user", "content": user_content}],
     }).encode("utf-8")
 
@@ -616,7 +643,7 @@ def validate_and_summarize_clusters_with_ai(candidate_groups, api_key):
     )
     try:
         ctx = ssl.create_default_context()
-        with urllib.request.urlopen(req, timeout=90, context=ctx) as resp:
+        with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         text = "".join(
             block.get("text", "") for block in data.get("content", [])
@@ -638,7 +665,8 @@ def validate_and_summarize_clusters_with_ai(candidate_groups, api_key):
                     "summary": str(summary).strip() if summary else None,
                 })
             return cleaned
-        print("  [AI kumeleme uyarisi] beklenmeyen format, sezgisel gruplar oldugu gibi kullanilacak")
+        print(f"  [AI kumeleme uyarisi] beklenmeyen format ({len(candidate_groups)} grup gonderildi, "
+              f"{len(results) if isinstance(results, list) else type(results).__name__} dondu)")
     except Exception as e:
         print(f"  [AI kumeleme hatasi] {e}")
     return None
@@ -1529,7 +1557,17 @@ def main():
 
         if validations:
             confirmed = 0
+            unvalidated = 0
             for group, result in zip(multi_candidates, validations):
+                if result is None:
+                    # Bu grubun batch'i basarisiz oldu -- sezgisel grubu
+                    # oldugu gibi (dogrulanmamis) kullan, diger gruplar
+                    # etkilenmedi.
+                    unvalidated += 1
+                    cluster_counter += 1
+                    for it in group:
+                        it["cluster_id"] = cluster_counter
+                    continue
                 keep_items = [group[i] for i in result["keep"] if 0 <= i < len(group)]
                 if len(keep_items) >= 2:
                     cluster_counter += 1
@@ -1538,7 +1576,9 @@ def main():
                         it["cluster_id"] = cluster_counter
                         if result["summary"]:
                             it["ai_summary"] = result["summary"]
-            print(f"  {confirmed}/{len(multi_candidates)} aday küme AI tarafından onaylandı")
+            validated_total = len(multi_candidates) - unvalidated
+            suffix = f" ({unvalidated} grup dogrulanamadi, sezgisel kullanildi)" if unvalidated else ""
+            print(f"  {confirmed}/{validated_total} aday küme AI tarafından onaylandı{suffix}")
         else:
             if api_key:
                 print("  AI doğrulaması alınamadı, sezgisel kümeler doğrulanmadan kullanılıyor")
