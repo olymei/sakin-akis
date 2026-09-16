@@ -300,6 +300,16 @@ tabanlı filtre mekanizmasını kullanır, ayrı bir sistem değil).
 - **"Gördüm" işaretleme:** Göz ikonu tıklanınca kümenin TÜM üyeleri birlikte işaretlenir
   (tek bir link değil), kart listenin en altına iner, localStorage'da kalıcı, tekrar
   tıklayınca geri alınabilir.
+  ⚠️ **`isClusterSeen` `every` değil `some` kullanmalı.** Kümeler build'ler arasında
+  SABİT değil -- her 6 saatte bir yeniden kümeleniyor, bu yüzden "gördüm" işaretlenen
+  2-kaynaklı bir haber sonraki build'de 3. bir kaynak kazanabilir. `every` kullanmak
+  (eski hali), o hiç görülmemiş yeni üyeyi içeren kümeyi TÜMDEN "görülmemiş"e geri
+  düşürüyordu -- kullanıcı "işaretlediğim şey geri geliyor" diye bildirdi, localStorage
+  kalıcılığının kendisi bozuk DEĞİLDİ (canlı sitede doğrulandı: fresh reload sonrası
+  `seenLinks` doğru geri yükleniyor). `some` ile kümenin herhangi bir önceki halini
+  görmüş olmak yeterli; tamamen yeni bir küme (hiç örtüşme yok) hâlâ "görülmemiş"
+  sayılır. Simüle edilerek doğrulandı (gerçek DATA'dan bir kümeye sahte yeni üye
+  eklenip `every` vs `some` karşılaştırıldı).
 - **Sayfalama:** 25 küme/sayfa, Başa Dön/Önceki/Sonraki/Sona Git. Filtre/sekme/sıralama
   değişince sayfa 1'e döner.
 - **Sıralama modları:** Kronolojik (varsayılan) / Önem sırasına göre (kapsam sayısı +

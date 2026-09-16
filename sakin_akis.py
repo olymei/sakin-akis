@@ -1286,7 +1286,15 @@ function render(){{
   }}
 
   function isClusterSeen(cluster){{
-    return cluster.every(it => seenLinks.has(it.link));
+    // Kumeler build'ler arasinda SABIT degil -- her yeniden calistirmada
+    // sifirdan kumeleniyor, bu yuzden 2 kaynakli bir haber sonraki build'de
+    // 3. bir kaynak kazanabilir. Eskiden `every` kullanmak, o yeni (hic
+    // gorulmemis) uyeyi iceren kumeyi tumden "gorulmemis"e geri duesuruyordu
+    // -- kullanici "gordum" isaretledigim sey geri geliyor diye bildirdi.
+    // `some` ile, o kumenin herhangi bir eski suruemunu gormuş olmak yeterli;
+    // hicbir uyesi daha once gorulmemisse (tamamen yeni kume) hala
+    // "gorulmemis" sayilir.
+    return cluster.some(it => seenLinks.has(it.link));
   }}
 
   const sortedForClustering = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
