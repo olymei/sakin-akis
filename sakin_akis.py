@@ -1043,16 +1043,25 @@ const TOPIC_SYNONYMS = {{
   "ekonomi": ["dolar","euro","enflasyon","borsa","faiz","tcmb","merkez bankası","ihracat","ithalat","economy","market"],
   "siyaset": ["chp","akp","mhp","iyi parti","meclis","bakan","cumhurbaşkanı","seçim","parti","politics"],
   "magazin": ["ünlü","oyuncu","şarkıcı","dizi","influencer","boşandı","evlendi","celebrity"],
-  "teknoloji": ["yapay zeka","yazılım","uygulama","telefon","apple","google","microsoft","tech","ai"]
+  "teknoloji": ["yapay zeka","yazılım","uygulama","telefon","apple","google","microsoft","tech","ai"],
+  // Anahtarin kendisi (chip'e tiklaninca filtre kutusuna YAZILAN kelime) kasitli
+  // olarak "oyun" DEGIL -- Turkce'de "oyun" cok kisa bir kok, "oyuncak" (toy),
+  // "oyuncu" (oyuncu/futbolcu yorumu) gibi alakasiz kelimelerin icinde de
+  // substring olarak geciyor (matchesFilter substring eslestiriyor, tam kelime
+  // degil). "gaming" anahtar olarak kullanilmasi bu carpismayi onluyor; Turkce
+  // arayuzde hala "oyun" GORUNUYOR (TOPIC_LABELS.tr.gaming) ama kutuya yazilan
+  // gercek kelime "gaming" -- zaten oyun haberleri (Oyun Dunyasi kaynagi)
+  // neredeyse tamamen Ingilizce oldugu icin bu pratikte daha isabetli de.
+  "gaming": ["video oyun","video game","trailer","fragman","dlc","steam","playstation","xbox","nintendo","e-spor","esports","game awards","goty"]
 }};
 
 const TOPIC_LABELS = {{
-  tr: {{futbol:"futbol", spor:"spor", ekonomi:"ekonomi", siyaset:"siyaset", magazin:"magazin", teknoloji:"teknoloji"}},
-  en: {{futbol:"football", spor:"sports", ekonomi:"economy", siyaset:"politics", magazin:"celebrity", teknoloji:"tech"}}
+  tr: {{futbol:"futbol", spor:"spor", ekonomi:"ekonomi", siyaset:"siyaset", magazin:"magazin", teknoloji:"teknoloji", gaming:"oyun"}},
+  en: {{futbol:"football", spor:"sports", ekonomi:"economy", siyaset:"politics", magazin:"celebrity", teknoloji:"tech", gaming:"gaming"}}
 }};
 
 const TOPIC_KEYS_BY_TAB = {{
-  haber: ["futbol","spor","ekonomi","siyaset","magazin","teknoloji"]
+  haber: ["futbol","spor","ekonomi","siyaset","magazin","teknoloji","gaming"]
 }};
 
 function hideStorageKey(){{ return 'sakinakis_hide_' + currentTab; }}

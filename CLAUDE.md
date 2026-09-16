@@ -302,11 +302,24 @@ yabancı (Reuters, AP, BBC EN, Al Jazeera English, Guardian, Euronews, NPR, The 
 Oyun Dünyası).
 
 **Konu chip'leri (`TOPIC_SYNONYMS`, `TOPIC_KEYS_BY_TAB`):** Futbol, Spor, Ekonomi, Siyaset,
-Magazin, Teknoloji. (Eskiden Oyunlar sekmesine özel "Güncelleme Notları"/`patchnotes` ve
-"Diğer"/`digeroyun` chip'leri de vardı, sekmeyle birlikte silindi.)
+Magazin, Teknoloji, Oyun. (Eskiden Oyunlar sekmesine özel "Güncelleme Notları"/`patchnotes`
+ve "Diğer"/`digeroyun` chip'leri de vardı, sekmeyle birlikte silindi -- bu "Oyun" chip'i
+onlardan farklı, Haberler akışına karışan "Oyun Dünyası" kaynağını filtrelemek için.)
 
 Chip'e tıklamak, o anahtar kelimeyi gizle/sadece-göster/önemli kutusuna yazar (mevcut metin
-tabanlı filtre mekanizmasını kullanır, ayrı bir sistem değil).
+tabanlı filtre mekanizmasını kullanır, ayrı bir sistem değil) -- `matchesFilter` SUBSTRING
+eşleştirme yapıyor, tam kelime değil.
+
+⚠️ **Oyun chip'inin object key'i `"gaming"`, `"oyun"` DEĞİL.** Diğer tüm chip'lerde key ve
+görünen Türkçe metin aynı (`futbol`→"futbol") ama Oyun chip'i için bilerek farklı: kullanıcı
+"oyun" chip'i isteyince önce dogrudan `"oyun"` key'i kullanıldı, ama test ederken "oyun"un
+Türkçe'de çok kısa bir kök olup "oyuncak" (toy), "oyuncu" (oyuncu/futbolcu yorumu) gibi
+tamamen alakasız kelimelerin İÇİNDE de substring olarak geçtiği görüldü (canlıda test edildi
+-- "Boğazına oyuncak kaçan çocuk" gibi haberler yanlışlıkla eşleşti). `TOPIC_LABELS.tr.gaming
+= "oyun"` ile Türkçe arayüzde hâlâ "oyun" GÖRÜNÜYOR ama chip'e tıklayınca kutuya yazılan
+gerçek kelime `"gaming"` (İngilizce -- zaten oyun haberlerinin kaynağı olan "Oyun Dünyası"
+neredeyse tamamen İngilizce). Yeni bir chip eklerken KEY'in kısa/genel bir kelime olup
+olmadığını (Türkçe'de başka kelimelerin içine gizlenip gizlenmediğini) kontrol et.
 
 ## localStorage anahtarları (hepsi `sakinakis_` önekli)
 
