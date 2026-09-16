@@ -946,7 +946,7 @@ const I18N = {{
     pageIndicator: (cur, total) => `Sayfa ${{cur}} / ${{total}}`
   }},
   en: {{
-    title: "Calm Feed",
+    title: "CALM FEED",
     today: "today", yesterday: "yesterday",
     months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
     relMin: "m", relHour: "h", relDay: "d",
@@ -1184,10 +1184,10 @@ const TOPIC_SYNONYMS = {{
 }};
 
 const TOPIC_LABELS = {{
-  tr: {{futbol:"Futbol", spor:"Spor", ekonomi:"Ekonomi", siyaset:"Siyaset", magazin:"Magazin", teknoloji:"Teknoloji",
-        patchnotes:"Güncelleme Notları", digeroyun:"Diğer"}},
-  en: {{futbol:"Football", spor:"Sports", ekonomi:"Economy", siyaset:"Politics", magazin:"Celebrity", teknoloji:"Tech",
-        patchnotes:"Patch Notes", digeroyun:"Other"}}
+  tr: {{futbol:"futbol", spor:"spor", ekonomi:"ekonomi", siyaset:"siyaset", magazin:"magazin", teknoloji:"teknoloji",
+        patchnotes:"güncelleme notları", digeroyun:"diğer"}},
+  en: {{futbol:"football", spor:"sports", ekonomi:"economy", siyaset:"politics", magazin:"celebrity", teknoloji:"tech",
+        patchnotes:"patch notes", digeroyun:"other"}}
 }};
 
 const TOPIC_KEYS_BY_TAB = {{
