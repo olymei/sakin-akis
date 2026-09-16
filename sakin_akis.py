@@ -719,8 +719,8 @@ display:flex;align-items:center;gap:5px}}
 .sources-label .chevron{{display:inline-block;transition:transform 0.15s ease;font-size:9px}}
 .sources-label.expanded .chevron{{transform:rotate(90deg)}}
 .sources{{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:6px}}
-.sources-subgroup-label{{flex-basis:100%;font-family:'IBM Plex Mono',monospace;font-size:10px;
-color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin:8px 0 2px}}
+.sources-subgroup-label{{flex-basis:100%;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+color:var(--ink-soft);margin:8px 0 2px}}
 .sources-subgroup-label:first-child{{margin-top:0}}
 .src-toggle{{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;
 font-size:12.5px;cursor:pointer;user-select:none;padding:3px 0;
@@ -926,8 +926,8 @@ const I18N = {{
     filterStatus: (shown, total) => `${{shown}} / ${{total}} haber gösteriliyor`,
     readFull: "kaynakta aç",
     sourcesLabel: "kaynaklar",
-    sourcesLangTr: "Türkçe kaynaklar",
-    sourcesLangForeign: "Yabancı kaynaklar",
+    sourcesLangTr: "türkçe kaynaklar",
+    sourcesLangForeign: "yabancı kaynaklar",
     expandedHint: words => `genişletilmiş eşleşme: ${{words.join(', ')}} de dahil`,
     importantLabel: "önemli (virgülle ayır)",
     sortToChrono: "kronolojik göster",
@@ -958,8 +958,8 @@ const I18N = {{
     filterStatus: (shown, total) => `showing ${{shown}} / ${{total}} articles`,
     readFull: "open source",
     sourcesLabel: "sources",
-    sourcesLangTr: "Turkish sources",
-    sourcesLangForeign: "International sources",
+    sourcesLangTr: "turkish sources",
+    sourcesLangForeign: "international sources",
     expandedHint: words => `expanded match includes: ${{words.join(', ')}}`,
     importantLabel: "important (comma-separated)",
     sortToChrono: "show chronological",
