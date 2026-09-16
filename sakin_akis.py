@@ -655,8 +655,6 @@ html.light{{--paper:#FFFFFF;--paper-raised:#F0F0F0;--ink:#000000;--ink-soft:#666
 *{{box-sizing:border-box}} body{{margin:0;background:var(--paper);color:var(--ink);
 font-family:'Source Serif 4',Georgia,serif;position:relative;transition:background 0.15s ease,color 0.15s ease}}
 .wrap{{max-width:640px;margin:0 auto;padding:32px 20px 80px}}
-h1{{font-size:28px;font-weight:700;margin:0;letter-spacing:-0.01em}}
-header{{margin-bottom:18px;position:relative}}
 .top-toggles{{position:fixed;top:18px;right:18px;display:flex;gap:8px;z-index:10}}
 .theme-toggle,.lang-toggle{{font-family:'IBM Plex Mono',monospace;
 font-size:12px;background:var(--paper);border:1px solid var(--ink);color:var(--ink);
@@ -765,7 +763,6 @@ margin-top:40px;padding-top:16px;border-top:1px solid var(--rule)}}
   <button class="lang-toggle" id="langToggle">EN</button>
 </div>
 <div class="wrap">
-<header><h1 id="pageTitle">Sakin Akış</h1></header>
 <div class="tabs" id="mainTabs"></div>
 <button class="sources-label" id="sourcesLabel">kaynaklar</button>
 <div class="sources" id="sourceToggles"></div>
@@ -914,7 +911,6 @@ function clusterItems(items){{
 
 const I18N = {{
   tr: {{
-    title: "Sakin Akış",
     today: "bugün", yesterday: "dün",
     months: ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"],
     relMin: "dk", relHour: "sa", relDay: "g",
@@ -946,7 +942,6 @@ const I18N = {{
     pageIndicator: (cur, total) => `Sayfa ${{cur}} / ${{total}}`
   }},
   en: {{
-    title: "CALM FEED",
     today: "today", yesterday: "yesterday",
     months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
     relMin: "m", relHour: "h", relDay: "d",
@@ -1260,7 +1255,6 @@ function matchesFilter(text, hideWords, onlyWords){{
 function render(){{
   const L = I18N[lang];
   document.documentElement.lang = lang;
-  document.getElementById('pageTitle').textContent = L.title;
   document.getElementById('langToggle').textContent = L.toggleLabel;
   document.documentElement.classList.toggle('light', theme === 'light');
   document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀' : '☾';
