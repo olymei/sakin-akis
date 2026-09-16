@@ -662,9 +662,9 @@ header{{margin-bottom:18px;position:relative}}
 font-size:12px;background:var(--paper);border:1px solid var(--ink);color:var(--ink);
 padding:6px 12px;cursor:pointer}}
 .theme-toggle:hover,.lang-toggle:hover{{background:var(--ink);color:var(--paper)}}
-.tabs{{display:flex;gap:0;margin:20px 0 4px;border-bottom:1px solid var(--rule)}}
-.tab-btn{{font-family:'IBM Plex Mono',monospace;font-size:13px;background:none;border:none;
-color:var(--ink-soft);padding:8px 4px;margin-right:22px;cursor:pointer;
+.tabs{{display:flex;margin:20px 0 4px;border-bottom:1px solid var(--rule)}}
+.tab-btn{{flex:1;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;
+background:none;border:none;color:var(--ink-soft);padding:8px 4px;cursor:pointer;
 border-bottom:2px solid transparent;position:relative;top:1px}}
 .tab-btn.active{{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}}
 .filters{{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 8px}}
