@@ -900,6 +900,21 @@ let currentPage = 1;
 const PAGE_SIZE = 25;
 let sourcesExpanded = false;
 
+// Kaynak adlari genelde marka/ozel isim oldugu icin (Reuters, BBC, Yeni
+// Safak vb.) dile gore hic degismiyor -- ceviri yok, olmamali. Ama "Oyun
+// Dunyasi" bizim uydurdugumuz bir kategori etiketi (gercek bir yayin adi
+// degil), o yuzden tek istisna olarak burada ceviriliyor. Item verisi
+// build zamaninda sabit bir "source" string'i tasidigi icin (SOURCES'taki
+// Turkce ad), bu override'i HER YERDE (kaynak toggle butonu, kart meta
+// satiri, kume kaynak listesi) sourceId uzerinden uygulamak gerekiyor.
+const SOURCE_NAME_OVERRIDES = {{
+  oyun_dunyasi: {{ tr: 'Oyun Dünyası', en: 'Gaming World' }}
+}};
+function sourceDisplayName(sourceId, fallbackName){{
+  const override = SOURCE_NAME_OVERRIDES[sourceId];
+  return override ? override[lang] : fallbackName;
+}}
+
 const EYE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
 const EYE_OFF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.66 18.66 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
 
@@ -929,7 +944,7 @@ function buildSourceToggles(){{
     sources.forEach(s => {{
       const btn = document.createElement('button');
       btn.className = 'src-toggle' + (activeSources.has(s.id) ? ' active' : '');
-      btn.textContent = s.name;
+      btn.textContent = sourceDisplayName(s.id, s.name);
       btn.addEventListener('click', () => {{
         if (activeSources.has(s.id)) activeSources.delete(s.id);
         else activeSources.add(s.id);
@@ -1204,13 +1219,13 @@ function render(){{
 
     const metaHtml = isMulti
       ? `<span class="coverage-badge">${{L.coverageBadge(cluster.length)}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`
-      : `<span>${{newest.source}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`;
+      : `<span>${{sourceDisplayName(newest.sourceId, newest.source)}}</span><span>&middot;</span><span>${{relTime(dt, now, L)}}</span><span>&middot;</span><span>${{absDate(dt, L)}}</span>`;
 
     const sourcesListHtml = isMulti
       ? `<button class="sources-toggle-btn"><span class="chevron">&#9656;</span><span>${{L.sourcesToggle(cluster.length)}}</span></button>
          <div class="cluster-sources">` + cluster.map(m => `
           <div class="cluster-source-row">
-            <span class="cluster-source-name">${{m.source}}</span>
+            <span class="cluster-source-name">${{sourceDisplayName(m.sourceId, m.source)}}</span>
             <a href="${{m.link}}" target="_blank" rel="noopener">${{m.title}}</a>
           </div>`).join('') + `</div>`
       : '';

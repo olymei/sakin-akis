@@ -77,6 +77,18 @@ when:4d`. Canlı test edilerek kalibre edildi (birkaç sürüm denendi -- ilk ha
 gürültüsü içeriyordu, `-"Hunger Games"` filmi dışlamak icin eklendi çünkü başlığında "Games"
 geçiyor ve genel "trailer" sorgusuna yanlışlıkla giriyordu).
 
+⚠️ **Kaynak adı çevirisi istisnası.** Diğer TÜM kaynak adları gerçek marka/yayın adı
+olduğu için dile göre hiç değişmiyor (Reuters İngilizce modda da "Reuters"). "Oyun
+Dünyası" gerçek bir yayın adı değil, bizim uydurduğumuz bir kategori etiketi -- İngilizce
+modda "Oyun Dünyası" görünmesi kullanıcı tarafından hata olarak bildirildi. Düzeltme: JS'de
+`SOURCE_NAME_OVERRIDES` (sourceId → {{tr, en}}) + `sourceDisplayName(sourceId, fallback)`
+helper'ı eklendi, `lang`'a göre çeviriyor, override yoksa `fallback`'e (SOURCES'taki sabit
+ad) düşüyor. Item verisi build zamanında sabit bir "source" string'i taşıdığı için (dile
+göre değişmiyor), bu helper HER YERDE kullanılmalı: kaynak toggle butonu
+(`buildSourceToggles`), tekil kart meta satırı (`newest.source`), küme kaynak listesi
+(`m.source`). Yeni bir kategori-etiketi kaynak eklersen (gerçek bir yayın değilse)
+`SOURCE_NAME_OVERRIDES`'a ekle, `s.name`/`.source`'u doğrudan render etme.
+
 **RSS kaynak stratejisi:**
 - Kendi RSS'i olan (BBC, Habertürk, NTV, Hürriyet, Sabah, Halk TV, Al Jazeera English,
   The Guardian, Euronews, NPR, CNN Türk, Yeni Şafak) → direkt kullanılıyor
