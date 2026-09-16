@@ -310,8 +310,14 @@ tabanlı filtre mekanizmasını kullanır, ayrı bir sistem değil).
 ## GitHub Actions kurulumu
 
 `.github/workflows/build.yml`:
-- Tetikleyiciler: `cron: "0 * * * *"` (saatte bir), `workflow_dispatch` (elle), `push` (main)
+- Tetikleyiciler: `cron: "0 */6 * * *"` (6 saatte bir -- eskiden saatlikti, AI kümeleme
+  doğrulaması eklenince (Claude Haiku, her build'de gerçek ücret) RSS pencereleri
+  (`when:3d` vb.) büyük ölçüde örtüştüğü için saatlik çalıştırmak aynı adayları sürekli
+  tekrar faturalandırıyordu (~$35/ay). 6 saatte bir ile ~$0.20/gün, $5 kredi ~1 ay
+  yetiyor -- kullanıcının bilinçli tercihi), `workflow_dispatch` (elle), `push` (main)
 - `ANTHROPIC_API_KEY` secret olarak Settings → Secrets and variables → Actions altında
+  -- kullanıcı henüz satın almadı (bu proje AI kümeleme doğrulaması eklenene kadar
+  gerek yoktu), $5 kredi ile başlıyor
 - Pages source: "GitHub Actions" (branch değil!)
 - `actions/upload-pages-artifact` + `actions/deploy-pages` ile modern deploy yöntemi
 

@@ -594,7 +594,13 @@ def validate_and_summarize_clusters_with_ai(candidate_groups, api_key):
 
     body = json.dumps({
         "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 4000,
+        # 4000 riskliydi: ~200+ aday grup, her biri (onaylanirsa) kendi ozet
+        # cumlesiyle birlikte donuyor -- cikti kolayca bu siniri asip yaniti
+        # yarida kesebilir (JSON parse hatasi -> sessizce sezgisel fallback'e
+        # duser). 16000 ile bu riski ortadan kaldiriyoruz; kullanilmayan
+        # kapasite icin ekstra ucret yok, sadece gercekten uretilen token
+        # kadar odeniyor.
+        "max_tokens": 16000,
         "messages": [{"role": "user", "content": user_content}],
     }).encode("utf-8")
 
@@ -610,7 +616,7 @@ def validate_and_summarize_clusters_with_ai(candidate_groups, api_key):
     )
     try:
         ctx = ssl.create_default_context()
-        with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
+        with urllib.request.urlopen(req, timeout=90, context=ctx) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         text = "".join(
             block.get("text", "") for block in data.get("content", [])

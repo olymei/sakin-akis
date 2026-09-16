@@ -2,9 +2,13 @@ name: Sakin Akis Guncelle
 
 on:
   schedule:
-    # Her saat basi calisir (UTC saatine gore). Sikligi degistirmek istersen
-    # bu satiri duzenle, orn. her 30 dakikada bir icin "*/30 * * * *"
-    - cron: "0 * * * *"
+    # Her 6 saatte bir calisir (UTC saatine gore) -- eskiden saatlik calisiyordu
+    # ama AI kumeleme dogrulamasi (Claude Haiku) her calistiginda API'ya
+    # ucret odeniyor, RSS pencereleri (when:3d vb.) buyuk olcude ortustugu
+    # icin saatlik calistirmak ayni adaylari surekli tekrar tekrar
+    # faturalandiriyordu (~$35/ay). 6 saatte bir ile ~$0.20/gun, $5 kredi
+    # ~1 ay yetiyor. Sikligi degistirmek istersen bu satiri duzenle.
+    - cron: "0 */6 * * *"
   workflow_dispatch: {}   # Actions sekmesinden elle "Run workflow" ile de calistirilabilir
   push:
     branches: [main]      # Kod her guncellendiginde de bir kez calissin
