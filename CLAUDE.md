@@ -204,6 +204,23 @@ yola düşülür; local dev testi için yeterli.
 olayı yazmasını kümelemek amaç, tek kaynağın kendi tekrarını değil — o zaten katman 1'de
 temizleniyor). Bu kural hem aday üretiminde hem AI promptunda geçerli.
 
+⚠️ **Bu kural bir süre gerçekte ihlal ediliyordu (canlıda bulundu, kullanıcı "kümeleme hâlâ
+çok kötü" diye bildirdi — 124 kümeden 13'ü aynı kaynağı 2+ kez içeriyordu, örn. bir Kosova/
+Thaçi kararı kümesinde Guardian 2 kez, bir Gazze kümesinde Al Jazeera 2 kez).** Kök neden:
+`cluster_items_for_summary` içindeki aday üretim döngüsü, adayı sadece TOHUM ögenin
+(`items_sorted[i]`) kaynağıyla karşılaştırıyordu (`items_sorted[j]["sourceId"] ==
+items_sorted[i]["sourceId"]`), kümeye o ana kadar EKLENMİŞ diğer ögelerin kaynaklarıyla
+değil. Yani tohum bir AP haberiyse ve aynı olay hakkında iki FARKLI Guardian makalesi
+(örn. bir "ilk haber" + bir "takip/detay" makalesi) ayrı ayrı AP'ye benzerlik testini
+geçerse, ikisi de kümeye giriyordu — çünkü hiçbiri birbirinin kaynağıyla karşılaştırılmadı,
+sadece tohumla. Bu, AI doğrulama katmanından ÖNCE gelen saf bir Python mantık hatasıydı,
+AI'ın yargı kalitesiyle ilgisi yoktu; muhtemelen değişikliğin öncesinden beri (eski JS
+`clusterItems`/`isSimilarTitle`'da da aynı desende bir kontrol vardı) hep vardı, sadece
+şimdi aday kümeler doğrudan görünen karta dönüştüğü için daha görünür hale geldi. Düzeltme:
+döngü artık kümeye o ana kadar eklenmiş TÜM kaynak id'lerini bir set'te (`cluster_source_ids`)
+tutuyor, yeni aday sadece tohuma değil bu sete göre kontrol ediliyor. Yeni bir kaynak
+kaynağı bulunmuş bir gruba katılmayacak.
+
 `extract_proper_nouns`: artık SADECE Python'da var (JS'deki paralel kopyası
 `extractProperNouns` silindi -- JS artık kümeleme mantığı taşımıyor, "ikisini birden
 güncellemeyi unutma" derdi ortadan kalktı).

@@ -490,10 +490,11 @@ def cluster_items_for_summary(items):
         if assigned[i]:
             continue
         cluster = [items_sorted[i]]
+        cluster_source_ids = {items_sorted[i]["sourceId"]}
         assigned[i] = True
         dt_i = items_sorted[i]["date"]
         for j in range(i + 1, n):
-            if assigned[j] or items_sorted[j]["sourceId"] == items_sorted[i]["sourceId"]:
+            if assigned[j] or items_sorted[j]["sourceId"] in cluster_source_ids:
                 continue
             dt_j = items_sorted[j]["date"]
             if abs((dt_i - dt_j).total_seconds()) > 36 * 3600:
@@ -502,6 +503,7 @@ def cluster_items_for_summary(items):
                 word_sets[i], word_sets[j], proper_sets[i], proper_sets[j], name_freq
             ):
                 cluster.append(items_sorted[j])
+                cluster_source_ids.add(items_sorted[j]["sourceId"])
                 assigned[j] = True
         clusters.append(cluster)
     return clusters
