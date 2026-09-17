@@ -34,6 +34,22 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Kumeleme onbellegini geri yukle
+        # AI kumeleme dogrulamasi (Claude Haiku) pahali islem; RSS pencereleri
+        # build'ler arasi buyuk olcude ortustugu icin ayni aday kume art arda
+        # birkac build'de de tekrar ortaya cikiyor. Bu cache dogrulanmis
+        # kararlari build'ler arasi tasiyip aynı gruba tekrar AI cagrisi
+        # yapilmasini onluyor (cluster_cache.json, bkz. sakin_akis.py).
+        # key her run'da benzersiz (run_id) oldugu icin is bitiminde kayit
+        # HER ZAMAN basariyla kaydediliyor; restore-keys onekiyle en son
+        # kaydedilen onceki cache geri yukleniyor.
+        uses: actions/cache@v4
+        with:
+          path: cluster_cache.json
+          key: cluster-cache-${{ github.run_id }}
+          restore-keys: |
+            cluster-cache-
+
       - name: Sakin Akis'i calistir
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

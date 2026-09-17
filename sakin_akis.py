@@ -20,6 +20,7 @@ import ssl
 import re
 import json
 import base64
+import hashlib
 import concurrent.futures
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
@@ -627,6 +628,114 @@ def _validate_cluster_batch(candidate_groups, api_key):
     except Exception as e:
         print(f"  [AI kumeleme hatasi] {e}")
     return None
+
+
+# RSS pencereleri (when:3d/4d, bkz. SOURCES) build'ler arasi buyuk olcude
+# ortustugu icin ayni aday kume cogu zaman art arda birkac build'de de
+# ortaya cikiyor -- onceden AI tarafindan dogrulanmis bir grubu TEKRAR AI'a
+# gondermek gercek para harciyor, oysa karar zaten biliniyor. Bu cache
+# GitHub Actions'ta build'ler arasi `actions/cache` ile persist ediliyor
+# (bkz. build.yml), yerelde hep bos baslar ve hic yazilmaz (is_ci disinda
+# hic kullanilmiyor -- diger CI-ozel ozellikler gibi, bkz. CLAUDE.md).
+CLUSTER_CACHE_PATH = "cluster_cache.json"
+# En uzun RSS penceresi 4 gun (Oyun Dunyasi) -- 7 gun rahat bir pay birakiyor,
+# bu sureden eski bir kayit zaten hicbir aday grupla bir daha eslesmeyecek.
+CLUSTER_CACHE_MAX_AGE_DAYS = 7
+
+
+def _item_key(it):
+    """Bir haberin build'ler arasi SABIT kimligi: kaynak id'si + normallestirilmis
+    baslik kelimeleri. Link kullanilmiyor cunku bazi kaynaklar (Google News RSS)
+    ayni haber icin build'den build'e farkli bir link uretebiliyor; baslik+kaynak
+    kimligi cok daha guvenilir sekilde sabit kaliyor."""
+    return it["sourceId"] + "|" + " ".join(sorted(normalize_title_words(it["title"])))
+
+
+def _group_signature(group):
+    """Bir aday grubun (sirasiz) kimligi -- ayni haber kumesi build'ler arasi
+    farkli sirada gelse bile ayni imzayi uretir."""
+    raw = "\n".join(sorted(_item_key(it) for it in group))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def load_cluster_cache(path=CLUSTER_CACHE_PATH):
+    """Onceki build'lerde AI tarafindan verilmis kumeleme kararlarini diskten
+    okur. Dosya yoksa (ilk build) veya bozuksa bos sozluk doner -- hicbir sey
+    kirilmiyor, sadece o build'de her sey AI'a gider (cache sicak olmadan)."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_cluster_cache(cache, path=CLUSTER_CACHE_PATH):
+    """Guncellenmis cache'i diske yazar, bu arada CLUSTER_CACHE_MAX_AGE_DAYS'ten
+    eski kayitlari atar (dosyanin sinirsiz buyumesini onlemek icin -- bu kadar
+    eski bir kayit zaten hicbir gelecek aday grupla eslesmeyecek, RSS penceresi
+    o kadar geriye gitmiyor)."""
+    now = datetime.now(timezone.utc)
+    pruned = {}
+    for sig, entry in cache.items():
+        try:
+            cached_at = datetime.fromisoformat(entry["cached_at"])
+            age_days = (now - cached_at).total_seconds() / 86400
+        except (KeyError, ValueError, TypeError):
+            continue
+        if age_days <= CLUSTER_CACHE_MAX_AGE_DAYS:
+            pruned[sig] = entry
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(pruned, f, ensure_ascii=False)
+
+
+def _result_from_cache_entry(entry, group):
+    """Cache'teki bir karari (kept haberlerin _item_key kimlikleri) BU build'in
+    aday grubundaki pozisyonlara (indekslere) geri cevirir -- imza eslestigi
+    icin grubun ICERIGI ayni ama SIRASI garanti degil, bu yuzden index degil
+    kimlik uzerinden eslestiriliyor."""
+    keep_keys = set(entry.get("keep_keys") or [])
+    keep = [i for i, it in enumerate(group) if _item_key(it) in keep_keys]
+    return {"keep": keep, "summary": entry.get("summary")}
+
+
+def validate_and_summarize_clusters_with_ai_cached(candidate_groups, api_key, cache):
+    """validate_and_summarize_clusters_with_ai'i cache ile sarar: her grubun
+    imzasi (_group_signature) daha once cache'e girmisse AI'a HIC gitmeden o
+    sonuc tekrar kullanilir, sadece cache'te olmayan gruplar gercek API
+    cagrisina gonderilir. Yeni gelen sonuclar cache'e yazilir (mutasyonla,
+    caller save_cluster_cache ile diske yazacak). Donus degeri, girdiyle
+    ayni sirada/uzunlukta bir liste -- caller'a gore hicbir sey degismedi,
+    hangi grubun cache'ten hangi grubun AI'dan geldigi gorunmuyor bile."""
+    signatures = [_group_signature(g) for g in candidate_groups]
+    results = [None] * len(candidate_groups)
+    to_fetch_idx = []
+    to_fetch_groups = []
+    for i, sig in enumerate(signatures):
+        entry = cache.get(sig)
+        if entry is not None:
+            results[i] = _result_from_cache_entry(entry, candidate_groups[i])
+        else:
+            to_fetch_idx.append(i)
+            to_fetch_groups.append(candidate_groups[i])
+
+    cache_hits = len(candidate_groups) - len(to_fetch_groups)
+    if cache_hits:
+        print(f"  {cache_hits}/{len(candidate_groups)} aday küme önbellekten kullanıldı (AI'a tekrar gönderilmedi)")
+
+    if to_fetch_groups:
+        fetched = validate_and_summarize_clusters_with_ai(to_fetch_groups, api_key)
+        if fetched:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            for idx, group, result in zip(to_fetch_idx, to_fetch_groups, fetched):
+                results[idx] = result
+                if result is not None:
+                    cache[signatures[idx]] = {
+                        "keep_keys": [_item_key(group[i]) for i in result["keep"] if 0 <= i < len(group)],
+                        "summary": result["summary"],
+                        "cached_at": now_iso,
+                    }
+
+    return results
 
 
 def date_label(dt, now):
@@ -1445,12 +1554,15 @@ def main():
     haber_items = [it for it in all_items if it["category"] == "haber"]
     candidate_groups = cluster_items_for_summary(haber_items)
     multi_candidates = [c for c in candidate_groups if len(c) >= 2]
+    # Cache sadece CI'da (build'ler arasi actions/cache ile persist ediliyor)
+    # kullaniliyor -- yerelde hep bos, hicbir sey diske yazilmiyor.
+    cluster_cache = load_cluster_cache() if is_ci else {}
     cluster_counter = 0
     if multi_candidates:
         validations = None
         if api_key:
             print(f"\n{len(multi_candidates)} aday küme AI ile doğrulanıyor...")
-            validations = validate_and_summarize_clusters_with_ai(multi_candidates, api_key)
+            validations = validate_and_summarize_clusters_with_ai_cached(multi_candidates, api_key, cluster_cache)
 
         if validations:
             confirmed = 0
@@ -1488,6 +1600,9 @@ def main():
                 cluster_counter += 1
                 for it in group:
                     it["cluster_id"] = cluster_counter
+
+    if is_ci:
+        save_cluster_cache(cluster_cache)
 
     html = build_html(all_items)
 

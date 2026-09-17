@@ -243,6 +243,40 @@ yukarıdaki "Çapraz kaynak kümeleme" bölümü).
   gösterilir) — hiçbir şey kırılmaz
 - Kart başlığında AI özeti varsa o gösterilir, yoksa kümedeki en kısa/en sade başlık
 
+### Build'ler arası dogrulama cache'i (maliyeti dusurmek icin)
+
+⚠️ **Kullanıcı için maliyet gerçek bir dert oldu** ("6 dolar ~300 TL, birçok abonelikten
+daha pahalı") — $5 kredi ~1 ay yetiyordu (6 saatlik cron ile), bu da aylık tekrar eden bir
+masraf. Kök sebep: RSS pencereleri (`when:3d`/`when:4d`, bkz. SOURCES) build'ler arası büyük
+ölçüde örtüşüyor, yani AYNI aday küme art arda birkaç build'de (bazen 4-16 build boyunca,
+~1-4 gün) tekrar tekrar ortaya çıkıyor ama her seferinde YENİDEN AI'a gönderiliyordu —
+kullanıcı zaten bilinen bir kararı tekrar tekrar parayla satın alıyordu.
+
+**Çözüm:** `cluster_cache.json` — build'ler arası `actions/cache@v4` ile persist edilen
+(bkz. `build.yml`) bir JSON sözlük. Her aday grubun `_group_signature`'ı (grup içindeki
+ögelerin `sourceId + normalize edilmiş başlık kelimeleri` kimliklerinin sıralı/hash'lenmiş
+hali — LİNK değil, çünkü Google News RSS aynı haber için build'den build'e farklı bir link
+üretebiliyor, ama başlık+kaynak kimliği çok daha güvenilir sabit kalıyor) cache'te aranıyor:
+
+- Bulunursa: AI'a HİÇ gönderilmiyor, önceki karar (`keep_keys` + `summary`) tekrar kullanılıyor
+- Bulunmazsa: SADECE o grup(lar) gerçek API çağrısına gidiyor (`validate_and_summarize_clusters_with_ai_cached`
+  eski `validate_and_summarize_clusters_with_ai`'ı sarmalayıp sadece cache-miss olan gruplarla
+  çağırıyor)
+- Yeni sonuçlar cache'e yazılıyor, `save_cluster_cache` her build sonunda diske yazıyor
+  (7 günden eski kayıtları da budayarak — en uzun RSS penceresi 4 gün, 7 gün rahat bir pay)
+
+Sadece `is_ci` iken çalışıyor (yerelde hep boş cache, hiçbir dosya yazılmıyor — diğer
+CI-özel özellikler gibi, bkz. "Çalışma modları"). GitHub Actions cache'i restore için sabit
+bir önek (`cluster-cache-`) ile en son kaydı geri yüklüyor, kayıt için HER run'a özel bir
+anahtar (`cluster-cache-` + run id) kullanıyor -- bunun nedeni: `actions/cache`
+aynı anahtara ikinci kez kayıt yapmayı reddediyor (immutable cache), run'a özel anahtar bu
+sorunu düzden ortadan kaldırıyor.
+
+Test edilmedi (gerçek API çağrısı gerektirir) ama cache mantığının kendisi mock'lanmış
+`validate_and_summarize_clusters_with_ai` ile 4 senaryoda doğrulandı: soğuk cache (hepsi
+AI'a gider), sıcak cache (hiçbiri gitmez), kısmi cache (sadece yeni grup gider), ve 10 günlük
+bayat bir kaydın `save_cluster_cache` tarafından budandığı doğrulandı.
+
 ## Görseller
 
 Üç katmanlı sistem, öncelik sırasıyla:
@@ -387,10 +421,15 @@ artık hep `haber`), `only_haber`, `important_haber`, `sources`, `sortmode`, `se
   doğrulaması eklenince (Claude Haiku, her build'de gerçek ücret) RSS pencereleri
   (`when:3d` vb.) büyük ölçüde örtüştüğü için saatlik çalıştırmak aynı adayları sürekli
   tekrar faturalandırıyordu (~$35/ay). 6 saatte bir ile ~$0.20/gün, $5 kredi ~1 ay
-  yetiyor -- kullanıcının bilinçli tercihi), `workflow_dispatch` (elle), `push` (main)
-- `ANTHROPIC_API_KEY` secret olarak Settings → Secrets and variables → Actions altında
-  -- kullanıcı henüz satın almadı (bu proje AI kümeleme doğrulaması eklenene kadar
-  gerek yoktu), $5 kredi ile başlıyor
+  yetiyordu -- build'ler arası doğrulama cache'i eklenene kadar (bkz. "AI özet + kümeleme
+  doğrulama" altındaki "Build'ler arası doğrulama cache'i" bölümü); artık aynı aday küme
+  art arda birkaç build'de tekrar AI'a gitmiyor, gerçek maliyet büyük ölçüde düştü ama
+  tam yeni oranı canlıda henüz doğrulanmadı -- kullanıcı birkaç build boyunca izleyecek),
+  `workflow_dispatch` (elle), `push` (main)
+- `ANTHROPIC_API_KEY` secret olarak Settings → Secrets and variables → Actions altında,
+  kullanıcının kendi $5 kredisiyle
+- `cluster-cache-*` adında bir `actions/cache` girdisi de var (`cluster_cache.json`,
+  build'ler arası AI doğrulama kararlarını taşıyor -- bkz. yukarısı)
 - Pages source: "GitHub Actions" (branch değil!)
 - `actions/upload-pages-artifact` + `actions/deploy-pages` ile modern deploy yöntemi
 
