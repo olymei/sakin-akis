@@ -1062,6 +1062,18 @@ const TOPIC_LABELS = {{
   en: {{futbol:"football", spor:"sports", ekonomi:"economy", siyaset:"politics", magazin:"celebrity", teknoloji:"tech", gaming:"gaming"}}
 }};
 
+// Chip'e tiklaninca kutuya kullanicinin GORDUGU dildeki etiket yaziliyor
+// (asagida toggleTopicChip), ama TOPIC_SYNONYMS anahtarlari hep Turkce
+// (ornegin "futbol"). Bu ters-arama, kutudaki herhangi bir dildeki etiketi
+// (veya eski surumlerden kalma ham anahtari) tekrar dogru TOPIC_SYNONYMS
+// anahtarina cevirip expandWords'un calismaya devam etmesini sagliyor.
+const TOPIC_LABEL_TO_KEY = {{}};
+Object.keys(TOPIC_LABELS).forEach(langKey => {{
+  Object.keys(TOPIC_LABELS[langKey]).forEach(topicKey => {{
+    TOPIC_LABEL_TO_KEY[TOPIC_LABELS[langKey][topicKey].toLocaleLowerCase('tr')] = topicKey;
+  }});
+}});
+
 const TOPIC_KEYS_BY_TAB = {{
   haber: ["futbol","spor","ekonomi","siyaset","magazin","teknoloji","gaming"]
 }};
@@ -1075,9 +1087,10 @@ function getWordsArray(inputEl){{
 }}
 
 function toggleTopicChip(inputEl, topic, storageKey){{
+  const label = (TOPIC_LABELS[lang][topic] || topic).toLocaleLowerCase('tr');
   const words = getWordsArray(inputEl).map(w => w.toLocaleLowerCase('tr'));
-  const idx = words.indexOf(topic);
-  if (idx >= 0) words.splice(idx, 1); else words.push(topic);
+  const idx = words.findIndex(w => (TOPIC_LABEL_TO_KEY[w] || w) === topic);
+  if (idx >= 0) words.splice(idx, 1); else words.push(label);
   inputEl.value = words.join(', ');
   currentPage = 1;
   try {{ localStorage.setItem(storageKey, inputEl.value); }} catch(e) {{}}
@@ -1088,11 +1101,12 @@ function buildTopicChips(containerId, inputEl, storageKey){{
   const el = document.getElementById(containerId);
   el.innerHTML = '';
   const activeWords = getWordsArray(inputEl).map(w => w.toLocaleLowerCase('tr'));
+  const activeTopics = new Set(activeWords.map(w => TOPIC_LABEL_TO_KEY[w] || w));
   const keys = TOPIC_KEYS_BY_TAB[currentTab] || Object.keys(TOPIC_SYNONYMS);
   keys.forEach(topic => {{
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'topic-chip' + (activeWords.includes(topic) ? ' active' : '');
+    btn.className = 'topic-chip' + (activeTopics.has(topic) ? ' active' : '');
     btn.textContent = TOPIC_LABELS[lang][topic] || topic;
     btn.addEventListener('click', () => toggleTopicChip(inputEl, topic, storageKey));
     el.appendChild(btn);
@@ -1102,8 +1116,9 @@ function buildTopicChips(containerId, inputEl, storageKey){{
 function expandWords(words){{
   const expanded = new Set(words);
   words.forEach(w => {{
-    if (TOPIC_SYNONYMS[w]) {{
-      TOPIC_SYNONYMS[w].forEach(syn => expanded.add(syn.toLocaleLowerCase('tr')));
+    const topicKey = TOPIC_LABEL_TO_KEY[w] || w;
+    if (TOPIC_SYNONYMS[topicKey]) {{
+      TOPIC_SYNONYMS[topicKey].forEach(syn => expanded.add(syn.toLocaleLowerCase('tr')));
     }}
   }});
   return [...expanded];
