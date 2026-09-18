@@ -1006,7 +1006,10 @@ let theme = "dark";
 let activeSources = new Set(SOURCES_META.map(s => s.id));
 let sortMode = "chrono";
 let currentTab = "haber";
-let seenLinks = new Set();
+// Set degil Map: her link'e "gorulmus" olarak isaretlendigi ANI (timestamp)
+// da tutuyoruz, boylece "gordum" isaretlenen bir kume gercekten YIGININ EN
+// ALTINA gidip orada kalabiliyor (bkz. render()'daki seenClusters sirlamasi).
+let seenLinks = new Map();
 let currentPage = 1;
 const PAGE_SIZE = 25;
 let sourcesExpanded = false;
@@ -1315,10 +1318,28 @@ function render(){{
     return cluster.some(it => seenLinks.has(it.link));
   }}
 
+  function seenAt(cluster){{
+    // Kumenin "gorulmus" olarak isaretlendigi AN -- uyelerinden hangisi en
+    // SON isaretlendiyse o zaman damgasi kullanilir. Bu, seenClusters'i haber
+    // TARIHINE gore degil, kullanicinin goz ikonuna TIKLADIGI ANA gore
+    // siralamak icin -- boylece en son "gordum" dedigin kart, o kumenin
+    // yayin tarihi ne olursa olsun, gercekten yiginin EN ALTINA gidip orada
+    // kalir (eskiden yayin tarihine gore sirlandigi icin en yeni haber
+    // "gorulmus" isaretlense bile daha eski gorulmus haberlerin ONUNE
+    // geciyordu -- kullanici "en alta gonderdigim kart orada kalmiyor" diye
+    // bildirdi).
+    let latest = 0;
+    cluster.forEach(it => {{
+      const t = seenLinks.get(it.link);
+      if (t && t > latest) latest = t;
+    }});
+    return latest;
+  }}
+
   const sortedForClustering = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
   const allClusters = clusterItems(sortedForClustering);
   const unseenClusters = sortClustersByMode(allClusters.filter(c => !isClusterSeen(c)));
-  const seenClusters = sortClustersByMode(allClusters.filter(c => isClusterSeen(c)));
+  const seenClusters = allClusters.filter(c => isClusterSeen(c)).sort((a, b) => seenAt(a) - seenAt(b));
   const orderedClusters = [...unseenClusters, ...seenClusters];
 
   const totalPages = Math.max(1, Math.ceil(orderedClusters.length / PAGE_SIZE));
@@ -1421,8 +1442,9 @@ function render(){{
     eyeBtn.addEventListener('click', (e) => {{
       e.preventDefault();
       const shouldMark = !isClusterSeen(cluster);
+      const markedAt = Date.now();
       cluster.forEach(it => {{
-        if (shouldMark) seenLinks.add(it.link); else seenLinks.delete(it.link);
+        if (shouldMark) seenLinks.set(it.link, markedAt); else seenLinks.delete(it.link);
       }});
       try {{ localStorage.setItem('sakinakis_seen', JSON.stringify([...seenLinks])); }} catch(err) {{}}
       render();
@@ -1471,7 +1493,20 @@ try {{
   if (savedSources) activeSources = new Set(JSON.parse(savedSources));
   sortMode = localStorage.getItem('sakinakis_sortmode') || 'chrono';
   const savedSeen = localStorage.getItem('sakinakis_seen');
-  if (savedSeen) seenLinks = new Set(JSON.parse(savedSeen));
+  if (savedSeen) {{
+    const parsedSeen = JSON.parse(savedSeen);
+    if (Array.isArray(parsedSeen) && parsedSeen.length > 0 && Array.isArray(parsedSeen[0])) {{
+      // Yeni format: [[link, isaretlenmeAni], ...]
+      seenLinks = new Map(parsedSeen);
+    }} else {{
+      // Eski format (Set'ten donusturulmustu): [link, link, ...] -- ne zaman
+      // isaretlendigi bilinmiyor, hepsine simdiki zaman veriliyor. Boylece
+      // eski "gorulmus" veri kaybolmuyor, sadece bu build'den itibaren
+      // aralarindaki eski/yeni sirasi (yiginin neresinde durduklari) sifirlaniyor.
+      const now = Date.now();
+      seenLinks = new Map(parsedSeen.map(link => [link, now]));
+    }}
+  }}
 }} catch(e) {{ /* localStorage yoksa sessizce devam */ }}
 
 document.getElementById('sortToggle').addEventListener('click', () => {{

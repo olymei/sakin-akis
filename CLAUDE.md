@@ -393,6 +393,25 @@ artık hep `haber`), `only_haber`, `important_haber`, `sources`, `sortmode`, `se
   görmüş olmak yeterli; tamamen yeni bir küme (hiç örtüşme yok) hâlâ "görülmemiş"
   sayılır. Simüle edilerek doğrulandı (gerçek DATA'dan bir kümeye sahte yeni üye
   eklenip `every` vs `some` karşılaştırıldı).
+
+  ⚠️ **`seenLinks` `Set` değil `Map<link, işaretlenmeAnı>`.** Eskiden görülmüş kümeler
+  (`seenClusters`) kendi İÇİNDE de HABERİN YAYIN TARİHİNE göre sıralanıyordu
+  (`sortClustersByMode`, diğer her yerde olduğu gibi) — bu, "en üstteki kartı gördüm
+  işaretle, yığının en altına gitsin" beklentisini bozuyordu: eğer daha ÖNCEDEN
+  görülmüş (ve daha ESKİ tarihli) başka kümeler varsa, yeni işaretlenen (en YENİ
+  tarihli) küme görülmüş bölümünün EN BAŞINA düşüyordu (çünkü o bölüm de yeni→eski
+  sıralanıyordu), en sonuna değil. Kullanıcı canlı test ederek doğruladı: "en alta
+  gönderdiğim kart orada kalmıyor". Düzeltme: her link `seenLinks`'e (artık bir `Map`)
+  işaretlendiği ANIN `Date.now()` zaman damgasıyla ekleniyor, `seenClusters` artık
+  yayın tarihine göre değil bu `seenAt` zaman damgasına göre (ARTAN sırada) sıralanıyor
+  -- böylece en SON "gördüm" dediğin kart, haberin kendi tarihi ne olursa olsun,
+  gerçekten yığının en altına gidip orada kalıyor. Eski `Set` formatındaki (`[link,
+  link, ...]`) localStorage verisiyle geriye dönük uyumlu -- yüklenirken hepsine aynı
+  (şimdiki) zaman damgası veriliyor, hiçbir "görülmüş" veri kaybolmuyor, sadece
+  aralarındaki eski/yeni sırası bu noktadan itibaren sıfırlanıyor. Canlı tarayıcıda
+  test edildi: önce eski tarihli bir küme, sonra en yeni kart görülmüş işaretlendi --
+  yeni kart gerçekten en son sırada (son sayfanın son öğesi) yer aldı; tekrar
+  tıklanınca doğru şekilde sayfa 1'in başına geri döndü.
 - **Sayfalama:** 25 küme/sayfa, Başa Dön/Önceki/Sonraki/Sona Git. Filtre/sekme/sıralama
   değişince sayfa 1'e döner.
 - **Sıralama modları:** Kronolojik (varsayılan) / Önem sırasına göre (kapsam sayısı +
